@@ -1,10 +1,10 @@
-import rehypeFigure from "@microflash/rehype-figure"
+import rehypeFigureTitle from "rehype-figure-title"
 import type { QuartzTransformerPlugin } from "@quartz-community/types"
 
 export const RehypeFigure: QuartzTransformerPlugin = () => ({
-  name: "RehypeFigure",
+  name: "rehypeFigureTitle",
   htmlPlugins() {
-    return [[rehypeFigure, {}]]
+    return [[rehypeFigureTitle, {}]]
   },
 })
 
