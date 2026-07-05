@@ -210,117 +210,67 @@ function visit(tree, testOrVisitor, visitorOrReverse, maybeReverse) {
   }
 }
 
-// node_modules/hast-util-whitespace/lib/index.js
-var re = /[ \t\n\f\r]/g;
-function whitespace(thing) {
-  return typeof thing === "object" ? thing.type === "text" ? empty2(thing.value) : false : empty2(thing);
-}
-function empty2(value) {
-  return value.replace(re, "") === "";
-}
-
-// node_modules/unist-util-remove/lib/index.js
-function remove(tree, options, test) {
-  const is2 = convert(options);
-  let cascade = true;
-  preorder(tree);
-  function preorder(node, index, parent) {
-    if (node !== tree && is2(node, index, parent)) {
-      return false;
-    }
-    if ("children" in node && Array.isArray(node.children)) {
-      const nodeAsParent = (
-        /** @type {Parent} */
-        node
-      );
-      const children = nodeAsParent.children;
-      let oldChildIndex = -1;
-      let newChildIndex = 0;
-      if (children.length > 0) {
-        while (++oldChildIndex < children.length) {
-          if (preorder(children[oldChildIndex], oldChildIndex, nodeAsParent)) {
-            children[newChildIndex++] = children[oldChildIndex];
-          }
-        }
-        if (node !== tree && cascade && !newChildIndex) {
-          return false;
-        }
-        children.length = newChildIndex;
-      }
-    }
-    return true;
-  }
-}
-
-// node_modules/property-information/lib/util/schema.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/util/schema.js
 var Schema = class {
   /**
-   * @param {SchemaType['property']} property
-   *   Property.
-   * @param {SchemaType['normal']} normal
-   *   Normal.
-   * @param {Space | undefined} [space]
-   *   Space.
-   * @returns
-   *   Schema.
+   * @constructor
+   * @param {Properties} property
+   * @param {Normal} normal
+   * @param {string} [space]
    */
   constructor(property, normal, space) {
-    this.normal = normal;
     this.property = property;
+    this.normal = normal;
     if (space) {
       this.space = space;
     }
   }
 };
-Schema.prototype.normal = {};
 Schema.prototype.property = {};
-Schema.prototype.space = void 0;
+Schema.prototype.normal = {};
+Schema.prototype.space = null;
 
-// node_modules/property-information/lib/util/merge.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/util/merge.js
 function merge(definitions, space) {
   const property = {};
   const normal = {};
-  for (const definition of definitions) {
-    Object.assign(property, definition.property);
-    Object.assign(normal, definition.normal);
+  let index = -1;
+  while (++index < definitions.length) {
+    Object.assign(property, definitions[index].property);
+    Object.assign(normal, definitions[index].normal);
   }
   return new Schema(property, normal, space);
 }
 
-// node_modules/property-information/lib/normalize.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/normalize.js
 function normalize(value) {
   return value.toLowerCase();
 }
 
-// node_modules/property-information/lib/util/info.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/util/info.js
 var Info = class {
   /**
+   * @constructor
    * @param {string} property
-   *   Property.
    * @param {string} attribute
-   *   Attribute.
-   * @returns
-   *   Info.
    */
   constructor(property, attribute) {
-    this.attribute = attribute;
     this.property = property;
+    this.attribute = attribute;
   }
 };
-Info.prototype.attribute = "";
-Info.prototype.booleanish = false;
+Info.prototype.space = null;
 Info.prototype.boolean = false;
-Info.prototype.commaOrSpaceSeparated = false;
-Info.prototype.commaSeparated = false;
-Info.prototype.defined = false;
-Info.prototype.mustUseProperty = false;
-Info.prototype.number = false;
+Info.prototype.booleanish = false;
 Info.prototype.overloadedBoolean = false;
-Info.prototype.property = "";
+Info.prototype.number = false;
+Info.prototype.commaSeparated = false;
 Info.prototype.spaceSeparated = false;
-Info.prototype.space = void 0;
+Info.prototype.commaOrSpaceSeparated = false;
+Info.prototype.mustUseProperty = false;
+Info.prototype.defined = false;
 
-// node_modules/property-information/lib/util/types.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/util/types.js
 var types_exports = {};
 __export(types_exports, {
   boolean: () => boolean,
@@ -343,24 +293,15 @@ function increment() {
   return 2 ** ++powers;
 }
 
-// node_modules/property-information/lib/util/defined-info.js
-var checks = (
-  /** @type {ReadonlyArray<keyof typeof types>} */
-  Object.keys(types_exports)
-);
+// node_modules/rehype-figure-title/node_modules/property-information/lib/util/defined-info.js
+var checks = Object.keys(types_exports);
 var DefinedInfo = class extends Info {
   /**
    * @constructor
    * @param {string} property
-   *   Property.
    * @param {string} attribute
-   *   Attribute.
-   * @param {number | null | undefined} [mask]
-   *   Mask.
-   * @param {Space | undefined} [space]
-   *   Space.
-   * @returns
-   *   Info.
+   * @param {number|null} [mask]
+   * @param {string} [space]
    */
   constructor(property, attribute, mask, space) {
     let index = -1;
@@ -381,29 +322,81 @@ function mark(values, key, value) {
   }
 }
 
-// node_modules/property-information/lib/util/create.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/util/create.js
+var own = {}.hasOwnProperty;
 function create(definition) {
-  const properties = {};
-  const normals = {};
-  for (const [property, value] of Object.entries(definition.properties)) {
-    const info = new DefinedInfo(
-      property,
-      definition.transform(definition.attributes || {}, property),
-      value,
-      definition.space
-    );
-    if (definition.mustUseProperty && definition.mustUseProperty.includes(property)) {
-      info.mustUseProperty = true;
+  const property = {};
+  const normal = {};
+  let prop;
+  for (prop in definition.properties) {
+    if (own.call(definition.properties, prop)) {
+      const value = definition.properties[prop];
+      const info = new DefinedInfo(
+        prop,
+        definition.transform(definition.attributes || {}, prop),
+        value,
+        definition.space
+      );
+      if (definition.mustUseProperty && definition.mustUseProperty.includes(prop)) {
+        info.mustUseProperty = true;
+      }
+      property[prop] = info;
+      normal[normalize(prop)] = prop;
+      normal[normalize(info.attribute)] = prop;
     }
-    properties[property] = info;
-    normals[normalize(property)] = property;
-    normals[normalize(info.attribute)] = property;
   }
-  return new Schema(properties, normals, definition.space);
+  return new Schema(property, normal, definition.space);
 }
 
-// node_modules/property-information/lib/aria.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/xlink.js
+var xlink = create({
+  space: "xlink",
+  transform(_, prop) {
+    return "xlink:" + prop.slice(5).toLowerCase();
+  },
+  properties: {
+    xLinkActuate: null,
+    xLinkArcRole: null,
+    xLinkHref: null,
+    xLinkRole: null,
+    xLinkShow: null,
+    xLinkTitle: null,
+    xLinkType: null
+  }
+});
+
+// node_modules/rehype-figure-title/node_modules/property-information/lib/xml.js
+var xml = create({
+  space: "xml",
+  transform(_, prop) {
+    return "xml:" + prop.slice(3).toLowerCase();
+  },
+  properties: { xmlLang: null, xmlBase: null, xmlSpace: null }
+});
+
+// node_modules/rehype-figure-title/node_modules/property-information/lib/util/case-sensitive-transform.js
+function caseSensitiveTransform(attributes, attribute) {
+  return attribute in attributes ? attributes[attribute] : attribute;
+}
+
+// node_modules/rehype-figure-title/node_modules/property-information/lib/util/case-insensitive-transform.js
+function caseInsensitiveTransform(attributes, property) {
+  return caseSensitiveTransform(attributes, property.toLowerCase());
+}
+
+// node_modules/rehype-figure-title/node_modules/property-information/lib/xmlns.js
+var xmlns = create({
+  space: "xmlns",
+  attributes: { xmlnsxlink: "xmlns:xlink" },
+  transform: caseInsensitiveTransform,
+  properties: { xmlns: null, xmlnsXLink: null }
+});
+
+// node_modules/rehype-figure-title/node_modules/property-information/lib/aria.js
 var aria = create({
+  transform(_, prop) {
+    return prop === "role" ? prop : "aria-" + prop.slice(4).toLowerCase();
+  },
   properties: {
     ariaActiveDescendant: null,
     ariaAtomic: booleanish,
@@ -454,30 +447,19 @@ var aria = create({
     ariaValueNow: number,
     ariaValueText: null,
     role: null
-  },
-  transform(_, property) {
-    return property === "role" ? property : "aria-" + property.slice(4).toLowerCase();
   }
 });
 
-// node_modules/property-information/lib/util/case-sensitive-transform.js
-function caseSensitiveTransform(attributes, attribute) {
-  return attribute in attributes ? attributes[attribute] : attribute;
-}
-
-// node_modules/property-information/lib/util/case-insensitive-transform.js
-function caseInsensitiveTransform(attributes, property) {
-  return caseSensitiveTransform(attributes, property.toLowerCase());
-}
-
-// node_modules/property-information/lib/html.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/html.js
 var html = create({
+  space: "html",
   attributes: {
     acceptcharset: "accept-charset",
     classname: "class",
     htmlfor: "for",
     httpequiv: "http-equiv"
   },
+  transform: caseInsensitiveTransform,
   mustUseProperty: ["checked", "multiple", "muted", "selected"],
   properties: {
     // Standard Properties.
@@ -532,7 +514,7 @@ var html = create({
     formTarget: null,
     headers: spaceSeparated,
     height: number,
-    hidden: overloadedBoolean,
+    hidden: boolean,
     high: number,
     href: null,
     hrefLang: null,
@@ -829,13 +811,12 @@ var html = create({
     results: number,
     security: null,
     unselectable: null
-  },
-  space: "html",
-  transform: caseInsensitiveTransform
+  }
 });
 
-// node_modules/property-information/lib/svg.js
+// node_modules/rehype-figure-title/node_modules/property-information/lib/svg.js
 var svg = create({
+  space: "svg",
   attributes: {
     accentHeight: "accent-height",
     alignmentBaseline: "alignment-baseline",
@@ -1011,6 +992,7 @@ var svg = create({
     playbackOrder: "playbackorder",
     timelineBegin: "timelinebegin"
   },
+  transform: caseSensitiveTransform,
   properties: {
     about: commaOrSpaceSeparated,
     accentHeight: number,
@@ -1391,52 +1373,16 @@ var svg = create({
     yChannelSelector: null,
     z: null,
     zoomAndPan: null
-  },
-  space: "svg",
-  transform: caseSensitiveTransform
-});
-
-// node_modules/property-information/lib/xlink.js
-var xlink = create({
-  properties: {
-    xLinkActuate: null,
-    xLinkArcRole: null,
-    xLinkHref: null,
-    xLinkRole: null,
-    xLinkShow: null,
-    xLinkTitle: null,
-    xLinkType: null
-  },
-  space: "xlink",
-  transform(_, property) {
-    return "xlink:" + property.slice(5).toLowerCase();
   }
 });
 
-// node_modules/property-information/lib/xmlns.js
-var xmlns = create({
-  attributes: { xmlnsxlink: "xmlns:xlink" },
-  properties: { xmlnsXLink: null, xmlns: null },
-  space: "xmlns",
-  transform: caseInsensitiveTransform
-});
-
-// node_modules/property-information/lib/xml.js
-var xml = create({
-  properties: { xmlBase: null, xmlLang: null, xmlSpace: null },
-  space: "xml",
-  transform(_, property) {
-    return "xml:" + property.slice(3).toLowerCase();
-  }
-});
-
-// node_modules/property-information/lib/find.js
-var cap = /[A-Z]/g;
-var dash = /-[a-z]/g;
+// node_modules/rehype-figure-title/node_modules/property-information/lib/find.js
 var valid = /^data[-\w.:]+$/i;
+var dash = /-[a-z]/g;
+var cap = /[A-Z]/g;
 function find(schema, value) {
   const normal = normalize(value);
-  let property = value;
+  let prop = value;
   let Type = Info;
   if (normal in schema.normal) {
     return schema.property[schema.normal[normal]];
@@ -1444,7 +1390,7 @@ function find(schema, value) {
   if (normal.length > 4 && normal.slice(0, 4) === "data" && valid.test(value)) {
     if (value.charAt(4) === "-") {
       const rest = value.slice(5).replace(dash, camelcase);
-      property = "data" + rest.charAt(0).toUpperCase() + rest.slice(1);
+      prop = "data" + rest.charAt(0).toUpperCase() + rest.slice(1);
     } else {
       const rest = value.slice(4);
       if (!dash.test(rest)) {
@@ -1457,7 +1403,7 @@ function find(schema, value) {
     }
     Type = DefinedInfo;
   }
-  return new Type(property, value);
+  return new Type(prop, value);
 }
 function kebab($0) {
   return "-" + $0.toLowerCase();
@@ -1466,9 +1412,9 @@ function camelcase($0) {
   return $0.charAt(1).toUpperCase();
 }
 
-// node_modules/property-information/index.js
-var html2 = merge([aria, html, xlink, xmlns, xml], "html");
-var svg2 = merge([aria, svg, xlink, xmlns, xml], "svg");
+// node_modules/rehype-figure-title/node_modules/property-information/index.js
+var html2 = merge([xml, xlink, xmlns, aria, html], "html");
+var svg2 = merge([xml, xlink, xmlns, aria, svg], "svg");
 
 // node_modules/comma-separated-tokens/index.js
 function parse(value) {
@@ -1536,12 +1482,15 @@ function parse2(value) {
   return input ? input.split(/[ \t\n\r\f]+/g) : [];
 }
 
-// node_modules/hastscript/lib/create-h.js
+// node_modules/rehype-figure-title/node_modules/hastscript/lib/create-h.js
+var buttonTypes = /* @__PURE__ */ new Set(["button", "menu", "reset", "submit"]);
+var own2 = {}.hasOwnProperty;
 function createH(schema, defaultTagName, caseSensitive) {
-  const adjust = caseSensitive ? createAdjustMap(caseSensitive) : void 0;
+  const adjust = caseSensitive && createAdjustMap(caseSensitive);
   function h2(selector, properties, ...children) {
+    let index = -1;
     let node;
-    if (selector === null || selector === void 0) {
+    if (selector === void 0 || selector === null) {
       node = { type: "root", children: [] };
       const child = (
         /** @type {Child} */
@@ -1550,19 +1499,23 @@ function createH(schema, defaultTagName, caseSensitive) {
       children.unshift(child);
     } else {
       node = parseSelector(selector, defaultTagName);
-      const lower = node.tagName.toLowerCase();
-      const adjusted = adjust ? adjust.get(lower) : void 0;
-      node.tagName = adjusted || lower;
-      if (isChild(properties)) {
-        children.unshift(properties);
-      } else {
-        for (const [key, value] of Object.entries(properties)) {
-          addProperty(schema, node.properties, key, value);
+      node.tagName = node.tagName.toLowerCase();
+      if (adjust && own2.call(adjust, node.tagName)) {
+        node.tagName = adjust[node.tagName];
+      }
+      if (isProperties(properties, node.tagName)) {
+        let key;
+        for (key in properties) {
+          if (own2.call(properties, key)) {
+            addProperty(schema, node.properties, key, properties[key]);
+          }
         }
+      } else {
+        children.unshift(properties);
       }
     }
-    for (const child of children) {
-      addChild(node.children, child);
+    while (++index < children.length) {
+      addChild(node.children, children[index]);
     }
     if (node.type === "element" && node.tagName === "template") {
       node.content = { type: "root", children: node.children };
@@ -1572,40 +1525,26 @@ function createH(schema, defaultTagName, caseSensitive) {
   }
   return h2;
 }
-function isChild(value) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return true;
+function isProperties(value, name) {
+  if (value === null || value === void 0 || typeof value !== "object" || Array.isArray(value)) {
+    return false;
   }
-  if (typeof value.type !== "string") return false;
-  const record = (
-    /** @type {Record<string, unknown>} */
-    value
-  );
-  const keys = Object.keys(value);
-  for (const key of keys) {
-    const value2 = record[key];
-    if (value2 && typeof value2 === "object") {
-      if (!Array.isArray(value2)) return true;
-      const list = (
-        /** @type {ReadonlyArray<unknown>} */
-        value2
-      );
-      for (const item of list) {
-        if (typeof item !== "number" && typeof item !== "string") {
-          return true;
-        }
-      }
-    }
+  if (name === "input" || !value.type || typeof value.type !== "string") {
+    return true;
   }
   if ("children" in value && Array.isArray(value.children)) {
-    return true;
+    return false;
   }
-  return false;
+  if (name === "button") {
+    return buttonTypes.has(value.type.toLowerCase());
+  }
+  return !("value" in value);
 }
 function addProperty(schema, properties, key, value) {
   const info = find(schema, key);
+  let index = -1;
   let result;
-  if (value === null || value === void 0) return;
+  if (value === void 0 || value === null) return;
   if (typeof value === "number") {
     if (Number.isNaN(value)) return;
     result = value;
@@ -1622,34 +1561,37 @@ function addProperty(schema, properties, key, value) {
       result = parsePrimitive(info, info.property, value);
     }
   } else if (Array.isArray(value)) {
-    result = [...value];
+    result = value.concat();
   } else {
     result = info.property === "style" ? style(value) : String(value);
   }
   if (Array.isArray(result)) {
     const finalResult = [];
-    for (const item of result) {
-      finalResult.push(
+    while (++index < result.length) {
+      const value2 = (
         /** @type {number | string} */
-        parsePrimitive(info, info.property, item)
+        parsePrimitive(info, info.property, result[index])
       );
+      finalResult[index] = value2;
     }
     result = finalResult;
   }
   if (info.property === "className" && Array.isArray(properties.className)) {
-    result = properties.className.concat(
-      /** @type {Array<number | string> | number | string} */
+    const value2 = (
+      /** @type {number | string} */
       result
     );
+    result = properties.className.concat(value2);
   }
   properties[info.property] = result;
 }
 function addChild(nodes, value) {
-  if (value === null || value === void 0) ; else if (typeof value === "number" || typeof value === "string") {
+  let index = -1;
+  if (value === void 0 || value === null) ; else if (typeof value === "string" || typeof value === "number") {
     nodes.push({ type: "text", value: String(value) });
   } else if (Array.isArray(value)) {
-    for (const child of value) {
-      addChild(nodes, child);
+    while (++index < value.length) {
+      addChild(nodes, value[index]);
     }
   } else if (typeof value === "object" && "type" in value) {
     if (value.type === "root") {
@@ -1672,22 +1614,26 @@ function parsePrimitive(info, name, value) {
   }
   return value;
 }
-function style(styles) {
+function style(value) {
   const result = [];
-  for (const [key, value] of Object.entries(styles)) {
-    result.push([key, value].join(": "));
+  let key;
+  for (key in value) {
+    if (own2.call(value, key)) {
+      result.push([key, value[key]].join(": "));
+    }
   }
   return result.join("; ");
 }
 function createAdjustMap(values) {
-  const result = /* @__PURE__ */ new Map();
-  for (const value of values) {
-    result.set(value.toLowerCase(), value);
+  const result = {};
+  let index = -1;
+  while (++index < values.length) {
+    result[values[index].toLowerCase()] = values[index];
   }
   return result;
 }
 
-// node_modules/hastscript/lib/svg-case-sensitive-tag-names.js
+// node_modules/rehype-figure-title/node_modules/hastscript/lib/svg-case-sensitive-tag-names.js
 var svgCaseSensitiveTagNames = [
   "altGlyph",
   "altGlyphDef",
@@ -1730,57 +1676,42 @@ var svgCaseSensitiveTagNames = [
   "textPath"
 ];
 
-// node_modules/hastscript/lib/index.js
+// node_modules/rehype-figure-title/node_modules/hastscript/lib/index.js
 var h = createH(html2, "div");
 createH(svg2, "g", svgCaseSensitiveTagNames);
 
-// node_modules/@microflash/rehype-figure/index.js
-function rehypeFigure(options = {}) {
-  return (tree) => {
-    visit(tree, { tagName: "p" }, (node, index, parent) => {
-      if (!hasOnlyImages(node)) {
-        return;
-      }
-      remove(node, "text");
-      parent.children.splice(index, 1, ...node.children);
-      return index;
-    });
-    visit(tree, (node) => isImageWithAlt(node), (node, index, parent) => {
-      if (isImageWithCaption(parent) || isImageLink(parent)) {
-        return;
-      }
-      const figure = createFigure(node, options);
-      node.tagName = figure.tagName;
-      node.children = figure.children;
-      node.properties = figure.properties;
+// node_modules/rehype-figure-title/index.js
+function rehypeFigureTitle(option) {
+  const className = option && option.className || "rehype-figure-title";
+  function buildFigure({ properties }) {
+    const rawAlt = properties.alt || "";
+    const pipeIndex = rawAlt.indexOf("|");
+    let alt = rawAlt;
+    let figureClass = className;
+    if (pipeIndex !== -1) {
+      alt = rawAlt.slice(0, pipeIndex).trim();
+      const classes = rawAlt.slice(pipeIndex + 1).trim();
+      if (classes) figureClass = classes;
+    }
+    return h("figure", { class: figureClass }, [
+      h("img", { ...properties, alt, title: null }),
+      properties.title && properties.title.trim().length > 0 ? h("figcaption", properties.title) : ""
+    ]);
+  }
+  return function(tree) {
+    visit(tree, { tagName: "p" }, (node, index) => {
+      const images = node.children.filter((n) => n.tagName === "img").map((img) => buildFigure(img));
+      if (images.length === 0) return;
+      tree.children[index] = images.length === 1 ? images[0] : h("div", { class: `${className}-container` }, images);
     });
   };
-}
-function hasOnlyImages({ children }) {
-  return children.every((child) => child.tagName === "img" || whitespace(child));
-}
-function isImageWithAlt({ tagName, properties }) {
-  return tagName === "img" && Boolean(properties.alt) && Boolean(properties.src);
-}
-function isImageWithCaption({ tagName, children }) {
-  return tagName === "figure" && children.some((child) => child.tagName === "figcaption");
-}
-function isImageLink({ tagName }) {
-  return tagName === "a";
-}
-function createFigure({ properties }, options) {
-  const props = options.className ? { class: options.className } : {};
-  return h("figure", props, [
-    h("img", { ...properties }),
-    h("figcaption", properties.alt)
-  ]);
 }
 
 // src/index.ts
 var RehypeFigure = () => ({
-  name: "RehypeFigure",
+  name: "rehypeFigureTitle",
   htmlPlugins() {
-    return [[rehypeFigure, {}]];
+    return [[rehypeFigureTitle, {}]];
   }
 });
 var src_default = RehypeFigure;
