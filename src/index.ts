@@ -1,59 +1,54 @@
-import rehypeFigureTitle from "rehype-figure-title"
 import type { QuartzTransformerPlugin } from "@quartz-community/types"
 import { visit } from "unist-util-visit"
+import { fromMarkdown } from "mdast-util-from-markdown"
 
-function rehypeCaptionLinkify() {
+function remarkFigureCaptions() {
   return (tree: any) => {
-    visit(tree, "element", (node: any) => {
-      if (node.tagName !== "figcaption" || !Array.isArray(node.children)) return
+    visit(tree, "image", (node: any, index: number | undefined, parent: any) => {
+      if (!parent || index === undefined) return
+      if (!node.title) return
 
-      node.children = node.children.flatMap((child: any) => {
-        if (child.type !== "text" || typeof child.value !== "string") return [child]
+      const caption = fromMarkdown(node.title)
 
-        const url = child.value.match(/https?:\/\/[^\s]+/g)
-        if (!url) return [child]
-
-        const parts: any[] = []
-        let lastIndex = 0
-
-        for (const match of child.value.matchAll(/https?:\/\/[^\s]+/g)) {
-          const start = match.index ?? 0
-          const href = match[0]
-
-          if (start > lastIndex) {
-            parts.push({
-              type: "text",
-              value: child.value.slice(lastIndex, start),
-            })
-          }
-
-          parts.push({
-            type: "element",
-            tagName: "a",
-            properties: { href, target: "_blank", rel: "noreferrer" },
-            children: [{ type: "text", value: href }],
-          })
-
-          lastIndex = start + href.length
-        }
-
-        if (lastIndex < child.value.length) {
-          parts.push({
-            type: "text",
-            value: child.value.slice(lastIndex),
-          })
-        }
-
-        return parts
-      })
+      parent.children[index] = {
+        type: "html",
+        value: renderFigure(node.url, node.alt, caption),
+      }
     })
   }
 }
 
+function renderFigure(src: string, alt: string, caption: any) {
+  return `<figure><img src="${escapeHtml(src)}" alt="${escapeHtml(alt ?? "")}"><figcaption>${renderMdast(caption)}</figcaption></figure>`
+}
+
+function renderMdast(node: any): string {
+  if (!node) return ""
+  if (node.type === "root" && Array.isArray(node.children)) {
+    return node.children.map(renderMdast).join("")
+  }
+  if (node.type === "text") return escapeHtml(node.value ?? "")
+  if (node.type === "link") {
+    const href = escapeHtml(node.url ?? "")
+    const children = Array.isArray(node.children) ? node.children.map(renderMdast).join("") : ""
+    return `<a href="${href}" target="_blank" rel="noreferrer">${children}</a>`
+  }
+  if (Array.isArray(node.children)) return node.children.map(renderMdast).join("")
+  return ""
+}
+
+function escapeHtml(s: string) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+}
+
 export const RehypeFigure: QuartzTransformerPlugin = () => ({
-  name: "rehypeFigureTitle",
-  htmlPlugins() {
-    return [[rehypeFigureTitle, {}], [rehypeCaptionLinkify, {}]]
+  name: "remarkFigureCaptions",
+  remarkPlugins() {
+    return [[remarkFigureCaptions, {}]]
   },
 })
 
