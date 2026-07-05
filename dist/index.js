@@ -1708,10 +1708,48 @@ function rehypeFigureTitle(option) {
 }
 
 // src/index.ts
+function rehypeCaptionLinkify() {
+  return (tree) => {
+    visit(tree, "element", (node) => {
+      if (node.tagName !== "figcaption" || !Array.isArray(node.children)) return;
+      node.children = node.children.flatMap((child) => {
+        if (child.type !== "text" || typeof child.value !== "string") return [child];
+        const url = child.value.match(/https?:\/\/[^\s]+/g);
+        if (!url) return [child];
+        const parts = [];
+        let lastIndex = 0;
+        for (const match of child.value.matchAll(/https?:\/\/[^\s]+/g)) {
+          const start = match.index ?? 0;
+          const href = match[0];
+          if (start > lastIndex) {
+            parts.push({
+              type: "text",
+              value: child.value.slice(lastIndex, start)
+            });
+          }
+          parts.push({
+            type: "element",
+            tagName: "a",
+            properties: { href, target: "_blank", rel: "noreferrer" },
+            children: [{ type: "text", value: href }]
+          });
+          lastIndex = start + href.length;
+        }
+        if (lastIndex < child.value.length) {
+          parts.push({
+            type: "text",
+            value: child.value.slice(lastIndex)
+          });
+        }
+        return parts;
+      });
+    });
+  };
+}
 var RehypeFigure = () => ({
   name: "rehypeFigureTitle",
   htmlPlugins() {
-    return [[rehypeFigureTitle, {}]];
+    return [[rehypeFigureTitle, {}], [rehypeCaptionLinkify, {}]];
   }
 });
 var src_default = RehypeFigure;
