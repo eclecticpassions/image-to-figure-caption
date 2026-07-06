@@ -1,51 +1,36 @@
 import rehypeFigureTitle from "rehype-figure-title"
 import type { QuartzTransformerPlugin } from "@quartz-community/types"
 import { visit } from "unist-util-visit"
+import { fromMarkdown } from "mdast-util-from-markdown"
+import { toHast } from "mdast-util-to-hast"
+import type { Root } from "hast"
 
-function rehypeCaptionLinkify() {
-  return (tree: any) => {
+function rehypeRichCaption() {
+  return (tree: Root) => {
     visit(tree, "element", (node: any) => {
-      if (node.tagName !== "figcaption" || !Array.isArray(node.children)) return
+      if (node.tagName !== "figcaption") return
 
-      node.children = node.children.flatMap((child: any) => {
-        if (child.type !== "text" || typeof child.value !== "string") return [child]
+      if (node.children.length === 1 && node.children[0].type === "text") {
+        const captionText = node.children[0].value.trim()
 
-        const url = child.value.match(/https?:\/\/[^\s]+/g)
-        if (!url) return [child]
+        try {
+          const mdast = fromMarkdown(captionText)
+          let hast = toHast(mdast)
 
-        const parts: any[] = []
-        let lastIndex = 0
-
-        for (const match of child.value.matchAll(/https?:\/\/[^\s]+/g)) {
-          const start = match.index ?? 0
-          const href = match[0]
-
-          if (start > lastIndex) {
-            parts.push({
-              type: "text",
-              value: child.value.slice(lastIndex, start),
-            })
-          }
-
-          parts.push({
-            type: "element",
-            tagName: "a",
-            properties: { href, target: "_blank", rel: "noreferrer" },
-            children: [{ type: "text", value: href }],
+          // Add target="_blank" and rel to all links
+          visit(hast, "element", (linkNode: any) => {
+            if (linkNode.tagName === "a") {
+              linkNode.properties = linkNode.properties || {}
+              linkNode.properties.target = "_blank"
+              linkNode.properties.rel = "noreferrer noopener"
+            }
           })
 
-          lastIndex = start + href.length
+          node.children = hast.type === "root" ? hast.children : [hast]
+        } catch (e) {
+          console.warn("Failed to parse caption as Markdown:", captionText)
         }
-
-        if (lastIndex < child.value.length) {
-          parts.push({
-            type: "text",
-            value: child.value.slice(lastIndex),
-          })
-        }
-
-        return parts
-      })
+      }
     })
   }
 }
@@ -53,7 +38,10 @@ function rehypeCaptionLinkify() {
 export const RehypeFigure: QuartzTransformerPlugin = () => ({
   name: "rehypeFigureTitle",
   htmlPlugins() {
-    return [[rehypeFigureTitle, {}], [rehypeCaptionLinkify, {}]]
+    return [
+      [rehypeFigureTitle, {}],
+      [rehypeRichCaption, {}]
+    ]
   },
 })
 
