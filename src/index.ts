@@ -2,35 +2,47 @@ import type { QuartzTransformerPlugin } from "@quartz-community/types"
 import { visit } from "unist-util-visit"
 import { fromMarkdown } from "mdast-util-from-markdown"
 
-function remarkImageCaptionLinks() {
+function remarkFigureCaptions() {
   return (tree: any) => {
     visit(tree, "image", (node: any, index: number | undefined, parent: any) => {
       if (!parent || index === undefined) return
       if (!node.title) return
 
-      const caption = fromMarkdown(node.title)
-      const captionHtml = mdastToInlineHtml(caption)
+      const captionMdast = fromMarkdown(node.title)
+      const figureNode = {
+        type: "paragraph",
+        data: { hName: "figure" },
+        children: [
+          {
+            type: "image",
+            url: node.url,
+            alt: node.alt,
+            title: null,
+          },
+          {
+            type: "html",
+            value: `<figcaption>${renderInlineMdast(captionMdast)}</figcaption>`,
+          },
+        ],
+      }
 
-      parent.children.splice(index + 1, 0, {
-        type: "html",
-        value: `<figcaption>${captionHtml}</figcaption>`,
-      })
+      parent.children[index] = figureNode
     })
   }
 }
 
-function mdastToInlineHtml(node: any): string {
+function renderInlineMdast(node: any): string {
   if (!node) return ""
   if (node.type === "root" && Array.isArray(node.children)) {
-    return node.children.map(mdastToInlineHtml).join("")
+    return node.children.map(renderInlineMdast).join("")
   }
   if (node.type === "text") return escapeHtml(node.value ?? "")
   if (node.type === "link") {
     const href = escapeHtml(node.url ?? "")
-    const text = Array.isArray(node.children) ? node.children.map(mdastToInlineHtml).join("") : ""
+    const text = Array.isArray(node.children) ? node.children.map(renderInlineMdast).join("") : ""
     return `<a href="${href}" target="_blank" rel="noreferrer">${text}</a>`
   }
-  if (Array.isArray(node.children)) return node.children.map(mdastToInlineHtml).join("")
+  if (Array.isArray(node.children)) return node.children.map(renderInlineMdast).join("")
   return ""
 }
 
@@ -43,9 +55,9 @@ function escapeHtml(s: string) {
 }
 
 export const RehypeFigure: QuartzTransformerPlugin = () => ({
-  name: "remarkImageCaptionLinks",
+  name: "remarkFigureCaptions",
   remarkPlugins() {
-    return [[remarkImageCaptionLinks, {}]]
+    return [[remarkFigureCaptions, {}]]
   },
 })
 

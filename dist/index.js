@@ -7124,41 +7124,53 @@ function defaultOnError(left, right) {
 }
 
 // src/index.ts
-function remarkImageCaptionLinks() {
+function remarkFigureCaptions() {
   return (tree) => {
     visit(tree, "image", (node2, index2, parent) => {
       if (!parent || index2 === void 0) return;
       if (!node2.title) return;
-      const caption = fromMarkdown(node2.title);
-      const captionHtml = mdastToInlineHtml(caption);
-      parent.children.splice(index2 + 1, 0, {
-        type: "html",
-        value: `<figcaption>${captionHtml}</figcaption>`
-      });
+      const captionMdast = fromMarkdown(node2.title);
+      const figureNode = {
+        type: "paragraph",
+        data: { hName: "figure" },
+        children: [
+          {
+            type: "image",
+            url: node2.url,
+            alt: node2.alt,
+            title: null
+          },
+          {
+            type: "html",
+            value: `<figcaption>${renderInlineMdast(captionMdast)}</figcaption>`
+          }
+        ]
+      };
+      parent.children[index2] = figureNode;
     });
   };
 }
-function mdastToInlineHtml(node2) {
+function renderInlineMdast(node2) {
   if (!node2) return "";
   if (node2.type === "root" && Array.isArray(node2.children)) {
-    return node2.children.map(mdastToInlineHtml).join("");
+    return node2.children.map(renderInlineMdast).join("");
   }
   if (node2.type === "text") return escapeHtml(node2.value ?? "");
   if (node2.type === "link") {
     const href = escapeHtml(node2.url ?? "");
-    const text3 = Array.isArray(node2.children) ? node2.children.map(mdastToInlineHtml).join("") : "";
+    const text3 = Array.isArray(node2.children) ? node2.children.map(renderInlineMdast).join("") : "";
     return `<a href="${href}" target="_blank" rel="noreferrer">${text3}</a>`;
   }
-  if (Array.isArray(node2.children)) return node2.children.map(mdastToInlineHtml).join("");
+  if (Array.isArray(node2.children)) return node2.children.map(renderInlineMdast).join("");
   return "";
 }
 function escapeHtml(s) {
   return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 var RehypeFigure = () => ({
-  name: "remarkImageCaptionLinks",
+  name: "remarkFigureCaptions",
   remarkPlugins() {
-    return [[remarkImageCaptionLinks, {}]];
+    return [[remarkFigureCaptions, {}]];
   }
 });
 var src_default = RehypeFigure;
