@@ -7124,43 +7124,41 @@ function defaultOnError(left, right) {
 }
 
 // src/index.ts
-function remarkFigureCaptions() {
+function remarkImageCaptionLinks() {
   return (tree) => {
     visit(tree, "image", (node2, index2, parent) => {
       if (!parent || index2 === void 0) return;
       if (!node2.title) return;
       const caption = fromMarkdown(node2.title);
-      parent.children[index2] = {
+      const captionHtml = mdastToInlineHtml(caption);
+      parent.children.splice(index2 + 1, 0, {
         type: "html",
-        value: renderFigure(node2.url, node2.alt, caption)
-      };
+        value: `<figcaption>${captionHtml}</figcaption>`
+      });
     });
   };
 }
-function renderFigure(src, alt, caption) {
-  return `<figure><img src="${escapeHtml(src)}" alt="${escapeHtml(alt ?? "")}"><figcaption>${renderMdast(caption)}</figcaption></figure>`;
-}
-function renderMdast(node2) {
+function mdastToInlineHtml(node2) {
   if (!node2) return "";
   if (node2.type === "root" && Array.isArray(node2.children)) {
-    return node2.children.map(renderMdast).join("");
+    return node2.children.map(mdastToInlineHtml).join("");
   }
   if (node2.type === "text") return escapeHtml(node2.value ?? "");
   if (node2.type === "link") {
     const href = escapeHtml(node2.url ?? "");
-    const children = Array.isArray(node2.children) ? node2.children.map(renderMdast).join("") : "";
-    return `<a href="${href}" target="_blank" rel="noreferrer">${children}</a>`;
+    const text3 = Array.isArray(node2.children) ? node2.children.map(mdastToInlineHtml).join("") : "";
+    return `<a href="${href}" target="_blank" rel="noreferrer">${text3}</a>`;
   }
-  if (Array.isArray(node2.children)) return node2.children.map(renderMdast).join("");
+  if (Array.isArray(node2.children)) return node2.children.map(mdastToInlineHtml).join("");
   return "";
 }
 function escapeHtml(s) {
   return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 }
 var RehypeFigure = () => ({
-  name: "remarkFigureCaptions",
+  name: "remarkImageCaptionLinks",
   remarkPlugins() {
-    return [[remarkFigureCaptions, {}]];
+    return [[remarkImageCaptionLinks, {}]];
   }
 });
 var src_default = RehypeFigure;
