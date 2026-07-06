@@ -9720,20 +9720,45 @@ function rehypeRichCaption() {
     visit(tree, "element", (node2) => {
       if (node2.tagName !== "figcaption") return;
       if (node2.children.length === 1 && node2.children[0].type === "text") {
-        const captionText = node2.children[0].value.trim();
+        let text4 = node2.children[0].value.trim();
         try {
-          const mdast = fromMarkdown(captionText);
-          const hast = toHast(mdast);
-          visit(hast, (node3) => {
-            if (node3.type === "element" && node3.tagName === "a") {
-              node3.properties = node3.properties || {};
-              node3.properties.target = "_blank";
-              node3.properties.rel = "noreferrer noopener";
+          const mdast = fromMarkdown(text4);
+          let hast = toHast(mdast);
+          visit(hast, (n) => {
+            if (n.type === "element" && n.tagName === "a") {
+              n.properties = n.properties || {};
+              n.properties.target = "_blank";
+              n.properties.rel = "noreferrer noopener";
             }
           });
           node2.children = hast.type === "root" ? hast.children : [hast];
+          return;
         } catch (e) {
-          console.warn("Caption parse failed:", e);
+        }
+        const urlRegex = /https?:\/\/[^\s<)]+/g;
+        const parts = text4.split(urlRegex);
+        const matches = [...text4.matchAll(urlRegex)];
+        const newChildren = [];
+        parts.forEach((part, i) => {
+          if (part) {
+            newChildren.push({ type: "text", value: part });
+          }
+          if (matches[i]) {
+            const url = matches[i][0];
+            newChildren.push({
+              type: "element",
+              tagName: "a",
+              properties: {
+                href: url,
+                target: "_blank",
+                rel: "noreferrer noopener"
+              },
+              children: [{ type: "text", value: url }]
+            });
+          }
+        });
+        if (newChildren.length > 0) {
+          node2.children = newChildren;
         }
       }
     });

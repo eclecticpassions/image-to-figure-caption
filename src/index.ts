@@ -11,24 +11,53 @@ function rehypeRichCaption() {
       if (node.tagName !== "figcaption") return
 
       if (node.children.length === 1 && node.children[0].type === "text") {
-        const captionText = node.children[0].value.trim()
+        let text = node.children[0].value.trim()
 
+        // 1. Try full Markdown parsing first
         try {
-          const mdast = fromMarkdown(captionText)
-          const hast = toHast(mdast)
+          const mdast = fromMarkdown(text)
+          let hast = toHast(mdast)
 
-          // Force links to have target and rel
-          visit(hast, (node: any) => {
-            if (node.type === "element" && node.tagName === "a") {
-              node.properties = node.properties || {}
-              node.properties.target = "_blank"
-              node.properties.rel = "noreferrer noopener"
+          visit(hast, (n: any) => {
+            if (n.type === "element" && n.tagName === "a") {
+              n.properties = n.properties || {}
+              n.properties.target = "_blank"
+              n.properties.rel = "noreferrer noopener"
             }
           })
 
           node.children = hast.type === "root" ? hast.children : [hast]
-        } catch (e) {
-          console.warn("Caption parse failed:", e)
+          return
+        } catch (e) {}
+
+        // 2. Fallback: linkify raw URLs
+        const urlRegex = /https?:\/\/[^\s<)]+/g
+        const parts = text.split(urlRegex)
+        const matches = [...text.matchAll(urlRegex)]
+
+        const newChildren: any[] = []
+
+        parts.forEach((part: string, i: number) => {
+          if (part) {
+            newChildren.push({ type: "text", value: part })
+          }
+          if (matches[i]) {
+            const url = matches[i][0]
+            newChildren.push({
+              type: "element",
+              tagName: "a",
+              properties: {
+                href: url,
+                target: "_blank",
+                rel: "noreferrer noopener"
+              },
+              children: [{ type: "text", value: url }]
+            })
+          }
+        })
+
+        if (newChildren.length > 0) {
+          node.children = newChildren
         }
       }
     })
