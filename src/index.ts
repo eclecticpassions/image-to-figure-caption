@@ -7,31 +7,40 @@ import type { Root } from "hast"
 
 function rehypeRichCaption() {
   return (tree: Root) => {
+    let processed = 0
+
     visit(tree, "element", (node: any) => {
-      if (node.tagName !== "figcaption") return
+      if (node.tagName === "figcaption") {
+        processed++
+        console.log("🔍 Found figcaption with text:", 
+          node.children?.[0]?.value || "(no text)")
 
-      if (node.children.length === 1 && node.children[0].type === "text") {
-        const captionText = node.children[0].value.trim()
+        if (node.children.length === 1 && node.children[0].type === "text") {
+          let captionText = node.children[0].value.trim()
+          console.log("   → Parsing as Markdown:", captionText)
 
-        try {
-          const mdast = fromMarkdown(captionText)
-          let hast = toHast(mdast)
+          try {
+            const mdast = fromMarkdown(captionText)
+            const hast = toHast(mdast)
 
-          // Add target="_blank" and rel to all links
-          visit(hast, "element", (linkNode: any) => {
-            if (linkNode.tagName === "a") {
-              linkNode.properties = linkNode.properties || {}
-              linkNode.properties.target = "_blank"
-              linkNode.properties.rel = "noreferrer noopener"
-            }
-          })
+            visit(hast, "element", (linkNode: any) => {
+              if (linkNode.tagName === "a") {
+                linkNode.properties = linkNode.properties || {}
+                linkNode.properties.target = "_blank"
+                linkNode.properties.rel = "noreferrer noopener"
+              }
+            })
 
-          node.children = hast.type === "root" ? hast.children : [hast]
-        } catch (e) {
-          console.warn("Failed to parse caption as Markdown:", captionText)
+            node.children = hast.type === "root" ? hast.children : [hast]
+            console.log("   → Successfully parsed Markdown links!")
+          } catch (e) {
+            console.log("   → Failed to parse:", e)
+          }
         }
       }
     })
+
+    console.log(`Processed ${processed} figcaptions`)
   }
 }
 

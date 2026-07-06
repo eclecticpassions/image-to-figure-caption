@@ -9717,26 +9717,36 @@ function toHast(tree, options) {
 // src/index.ts
 function rehypeRichCaption() {
   return (tree) => {
+    let processed = 0;
     visit(tree, "element", (node2) => {
-      if (node2.tagName !== "figcaption") return;
-      if (node2.children.length === 1 && node2.children[0].type === "text") {
-        const captionText = node2.children[0].value.trim();
-        try {
-          const mdast = fromMarkdown(captionText);
-          let hast = toHast(mdast);
-          visit(hast, "element", (linkNode) => {
-            if (linkNode.tagName === "a") {
-              linkNode.properties = linkNode.properties || {};
-              linkNode.properties.target = "_blank";
-              linkNode.properties.rel = "noreferrer noopener";
-            }
-          });
-          node2.children = hast.type === "root" ? hast.children : [hast];
-        } catch (e) {
-          console.warn("Failed to parse caption as Markdown:", captionText);
+      if (node2.tagName === "figcaption") {
+        processed++;
+        console.log(
+          "\u{1F50D} Found figcaption with text:",
+          node2.children?.[0]?.value || "(no text)"
+        );
+        if (node2.children.length === 1 && node2.children[0].type === "text") {
+          let captionText = node2.children[0].value.trim();
+          console.log("   \u2192 Parsing as Markdown:", captionText);
+          try {
+            const mdast = fromMarkdown(captionText);
+            const hast = toHast(mdast);
+            visit(hast, "element", (linkNode) => {
+              if (linkNode.tagName === "a") {
+                linkNode.properties = linkNode.properties || {};
+                linkNode.properties.target = "_blank";
+                linkNode.properties.rel = "noreferrer noopener";
+              }
+            });
+            node2.children = hast.type === "root" ? hast.children : [hast];
+            console.log("   \u2192 Successfully parsed Markdown links!");
+          } catch (e) {
+            console.log("   \u2192 Failed to parse:", e);
+          }
         }
       }
     });
+    console.log(`Processed ${processed} figcaptions`);
   };
 }
 var RehypeFigure = () => ({
