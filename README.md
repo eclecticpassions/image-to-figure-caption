@@ -42,6 +42,24 @@ This Quartz plugin adds the following features:
     </figure>
     ```
 
+3. You can then style the `<figure>` and `<figcaption>`. For example, in `quartz/styles/custom.scss`:
+
+```scss
+figure {
+  text-align: center;
+  img {
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+  figcaption * {
+    margin: 0;
+    font-size: 0.833rem;
+    color: var(--text-muted);
+  }
+}
+```
+
 ## Install
 
 1. To install this plugin to your Quartz site, run:
