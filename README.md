@@ -1,4 +1,85 @@
-# Quartz Community Plugin Template
+# Markdown Image Syntax Support for Quartz
+
+This Quartz plugin adds the following features:
+
+- Use Markdown image syntax to generate `<figure>` and `<figcaption>` for HTML output
+- Diffrentiates between alt text and caption text as separate entities
+- Supports Markdown link syntax inside caption text
+
+## Usage Examples
+
+1. Add figure caption to an image:
+
+    ```md
+    ![Alt text here.](/path/to/image.webp "Caption text here")
+    ```
+
+    HTML output:
+
+    ```html
+    <figure class="rehype-figure-title">
+      <img src="/path/to/image.webp" alt="Alt text here." loading="lazy"/>
+      <figcaption>
+        <p>Caption text here</p>
+      </figcaption>
+    </figure>
+    ```
+
+2. Add figure caption that contains Markdown link:
+
+    ```md
+    ![Alt text here.](/path/to/image.webp "Caption text here but this time [contains a link](https://example.com)")
+    ```
+
+    HTML output:
+
+    ```html
+    <figure class="rehype-figure-title">
+      <img src="/path/to/image.webp" alt="Alt text here." loading="lazy"/>
+      <figcaption>
+        <p>Caption text here but this time <a href="https://example.com" target="_blank" rel="noreferrer noopener" class="external external-link">contains a link</a></p>
+      </figcaption>
+    </figure>
+    ```
+
+## Install
+
+1. To install this plugin to your Quartz site, run:
+
+    `npx quartz plugin install github:eclecticpassions/image-to-figure-caption`.
+
+2. To update the plugin, run it with the `--latest` flag like:
+
+    `npx quartz plugin install --latest github:eclecticpassions/image-to-figure-caption`
+
+3. Change the `quartz.config.yaml` file to the following:
+
+    ```yaml
+      - source: github:eclecticpassions/image-to-figure-caption
+        enabled: true
+    ```
+
+    Remove any addition config lines like `layout`, `position`, `priority`, etc.
+
+## Disclaimer
+
+> [!WARNING]
+> I used a few LLMs to help troubleshoot to get the `index.ts` file working. I am not a coder. Please review the code and packages before use. Check node package status by running `npm audit` regularly to check for vulnerabilities.
+
+- This plugin uses the official Quartz-community [plugin template](https://github.com/quartz-community/plugin-template)
+- Only Quartz v5.0.0 has been tested to work (if you run an older version of Quartz and want to test it, please open an issue, thanks!)
+- Depenencies include:
+  - [futuraprime/rehype-figure-title](https://www.npmjs.com/package/rehype-figure-title)
+  - mdast-util-from-markdown
+  - mdast-util-to-hast
+  - unist-util-visit
+  - @types/hast
+
+*Below is the README included in the Quartz plugin template.*
+
+---
+
+## Quartz Community Plugin Template
 
 Production-ready template for building, testing, and publishing Quartz community plugins. It mirrors
 Quartz's native plugin patterns and uses a factory-function API similar to Astro integrations:
