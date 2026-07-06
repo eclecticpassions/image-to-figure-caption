@@ -1,6 +1,8 @@
 import rehypeFigureTitle from "rehype-figure-title"
 import type { QuartzTransformerPlugin } from "@quartz-community/types"
 import { visit } from "unist-util-visit"
+import { fromMarkdown } from "mdast-util-from-markdown"
+import { toHast } from "mdast-util-to-hast"
 import type { Root } from "hast"
 
 function rehypeRichCaption() {
@@ -16,37 +18,53 @@ function rehypeRichCaption() {
       const captionText = textNode.value.trim()
       if (!captionText) return
 
-      const urlRegex = /https?:\/\/[^\s<)]+/g
-      const matches = [...captionText.matchAll(urlRegex)]
+      // Try full Markdown parsing first (preferred)
+      try {
+        const mdast = fromMarkdown(captionText)
+        let hast = toHast(mdast)
 
-      if (matches.length === 0) return
+        visit(hast, (n: any) => {
+          if (n.type === "element" && n.tagName === "a") {
+            n.properties = n.properties || {}
+            n.properties.target = "_blank"
+            n.properties.rel = "noreferrer noopener"
+          }
+        })
 
-      const parts = captionText.split(urlRegex)
-      const newChildren: any[] = []
-
-      parts.forEach((part: string, i: number) => {
-        if (part) {
-          newChildren.push({ type: "text", value: part })
+        if (pNode) {
+          pNode.children = hast.type === "root" ? hast.children : [hast]
+        } else {
+          node.children = hast.type === "root" ? hast.children : [hast]
         }
-        if (matches[i]) {
-          const url = matches[i][0]
-          newChildren.push({
-            type: "element",
-            tagName: "a",
-            properties: {
-              href: url,
-              target: "_blank",
-              rel: "noreferrer noopener"
-            },
-            children: [{ type: "text", value: url }]
+        return
+      } catch (e) {
+        // Fallback to raw URL linkify
+        const urlRegex = /https?:\/\/[^\s<)]+/g
+        const matches = [...captionText.matchAll(urlRegex)]
+        if (matches.length > 0) {
+          const parts = captionText.split(urlRegex)
+          const newChildren: any[] = []
+
+          parts.forEach((part: string, i: number) => {
+            if (part) newChildren.push({ type: "text", value: part })
+            if (matches[i]) {
+              const url = matches[i][0]
+              newChildren.push({
+                type: "element",
+                tagName: "a",
+                properties: {
+                  href: url,
+                  target: "_blank",
+                  rel: "noreferrer noopener"
+                },
+                children: [{ type: "text", value: url }]
+              })
+            }
           })
-        }
-      })
 
-      if (pNode) {
-        pNode.children = newChildren
-      } else {
-        node.children = newChildren
+          if (pNode) pNode.children = newChildren
+          else node.children = newChildren
+        }
       }
     })
   }
