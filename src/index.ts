@@ -1,8 +1,6 @@
 import rehypeFigureTitle from "rehype-figure-title"
 import type { QuartzTransformerPlugin } from "@quartz-community/types"
 import { visit } from "unist-util-visit"
-import { fromMarkdown } from "mdast-util-from-markdown"
-import { toHast } from "mdast-util-to-hast"
 import type { Root } from "hast"
 
 function rehypeRichCaption() {
@@ -10,46 +8,14 @@ function rehypeRichCaption() {
     visit(tree, "element", (node: any) => {
       if (node.tagName !== "figcaption") return
 
-      // Handle both direct text and text inside <p>
-      let textNode = node.children.find((child: any) => 
-        child.type === "text" || (child.type === "element" && child.tagName === "p")
-      )
+      const pNode = node.children.find((child: any) => child.tagName === "p")
+      const textNode = pNode ? pNode.children?.[0] : node.children?.[0]
 
-      if (!textNode) return
+      if (!textNode || textNode.type !== "text") return
 
-      let captionText = ""
-
-      if (textNode.type === "text") {
-        captionText = textNode.value.trim()
-      } else if (textNode.type === "element" && textNode.tagName === "p") {
-        captionText = textNode.children?.[0]?.value?.trim() || ""
-      }
-
+      const captionText = textNode.value.trim()
       if (!captionText) return
 
-      // Try Markdown parsing first
-      try {
-        const mdast = fromMarkdown(captionText)
-        let hast = toHast(mdast)
-
-        visit(hast, (n: any) => {
-          if (n.type === "element" && n.tagName === "a") {
-            n.properties = n.properties || {}
-            n.properties.target = "_blank"
-            n.properties.rel = "noreferrer noopener"
-          }
-        })
-
-        // Replace the content
-        if (textNode.type === "element" && textNode.tagName === "p") {
-          textNode.children = hast.type === "root" ? hast.children : [hast]
-        } else {
-          node.children = hast.type === "root" ? hast.children : [hast]
-        }
-        return
-      } catch (e) {}
-
-      // Fallback: raw URL linkify
       const urlRegex = /https?:\/\/[^\s<)]+/g
       const matches = [...captionText.matchAll(urlRegex)]
 
@@ -59,7 +25,9 @@ function rehypeRichCaption() {
       const newChildren: any[] = []
 
       parts.forEach((part: string, i: number) => {
-        if (part) newChildren.push({ type: "text", value: part })
+        if (part) {
+          newChildren.push({ type: "text", value: part })
+        }
         if (matches[i]) {
           const url = matches[i][0]
           newChildren.push({
@@ -75,8 +43,8 @@ function rehypeRichCaption() {
         }
       })
 
-      if (textNode.type === "element" && textNode.tagName === "p") {
-        textNode.children = newChildren
+      if (pNode) {
+        pNode.children = newChildren
       } else {
         node.children = newChildren
       }
