@@ -9719,47 +9719,60 @@ function rehypeRichCaption() {
   return (tree) => {
     visit(tree, "element", (node2) => {
       if (node2.tagName !== "figcaption") return;
-      if (node2.children.length === 1 && node2.children[0].type === "text") {
-        let text4 = node2.children[0].value.trim();
-        try {
-          const mdast = fromMarkdown(text4);
-          let hast = toHast(mdast);
-          visit(hast, (n) => {
-            if (n.type === "element" && n.tagName === "a") {
-              n.properties = n.properties || {};
-              n.properties.target = "_blank";
-              n.properties.rel = "noreferrer noopener";
-            }
-          });
-          node2.children = hast.type === "root" ? hast.children : [hast];
-          return;
-        } catch (e) {
-        }
-        const urlRegex = /https?:\/\/[^\s<)]+/g;
-        const parts = text4.split(urlRegex);
-        const matches = [...text4.matchAll(urlRegex)];
-        const newChildren = [];
-        parts.forEach((part, i) => {
-          if (part) {
-            newChildren.push({ type: "text", value: part });
-          }
-          if (matches[i]) {
-            const url = matches[i][0];
-            newChildren.push({
-              type: "element",
-              tagName: "a",
-              properties: {
-                href: url,
-                target: "_blank",
-                rel: "noreferrer noopener"
-              },
-              children: [{ type: "text", value: url }]
-            });
+      let textNode = node2.children.find(
+        (child) => child.type === "text" || child.type === "element" && child.tagName === "p"
+      );
+      if (!textNode) return;
+      let captionText = "";
+      if (textNode.type === "text") {
+        captionText = textNode.value.trim();
+      } else if (textNode.type === "element" && textNode.tagName === "p") {
+        captionText = textNode.children?.[0]?.value?.trim() || "";
+      }
+      if (!captionText) return;
+      try {
+        const mdast = fromMarkdown(captionText);
+        let hast = toHast(mdast);
+        visit(hast, (n) => {
+          if (n.type === "element" && n.tagName === "a") {
+            n.properties = n.properties || {};
+            n.properties.target = "_blank";
+            n.properties.rel = "noreferrer noopener";
           }
         });
-        if (newChildren.length > 0) {
-          node2.children = newChildren;
+        if (textNode.type === "element" && textNode.tagName === "p") {
+          textNode.children = hast.type === "root" ? hast.children : [hast];
+        } else {
+          node2.children = hast.type === "root" ? hast.children : [hast];
         }
+        return;
+      } catch (e) {
+      }
+      const urlRegex = /https?:\/\/[^\s<)]+/g;
+      const matches = [...captionText.matchAll(urlRegex)];
+      if (matches.length === 0) return;
+      const parts = captionText.split(urlRegex);
+      const newChildren = [];
+      parts.forEach((part, i) => {
+        if (part) newChildren.push({ type: "text", value: part });
+        if (matches[i]) {
+          const url = matches[i][0];
+          newChildren.push({
+            type: "element",
+            tagName: "a",
+            properties: {
+              href: url,
+              target: "_blank",
+              rel: "noreferrer noopener"
+            },
+            children: [{ type: "text", value: url }]
+          });
+        }
+      });
+      if (textNode.type === "element" && textNode.tagName === "p") {
+        textNode.children = newChildren;
+      } else {
+        node2.children = newChildren;
       }
     });
   };

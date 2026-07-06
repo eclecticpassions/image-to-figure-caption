@@ -10,55 +10,75 @@ function rehypeRichCaption() {
     visit(tree, "element", (node: any) => {
       if (node.tagName !== "figcaption") return
 
-      if (node.children.length === 1 && node.children[0].type === "text") {
-        let text = node.children[0].value.trim()
+      // Handle both direct text and text inside <p>
+      let textNode = node.children.find((child: any) => 
+        child.type === "text" || (child.type === "element" && child.tagName === "p")
+      )
 
-        // 1. Try full Markdown parsing first
-        try {
-          const mdast = fromMarkdown(text)
-          let hast = toHast(mdast)
+      if (!textNode) return
 
-          visit(hast, (n: any) => {
-            if (n.type === "element" && n.tagName === "a") {
-              n.properties = n.properties || {}
-              n.properties.target = "_blank"
-              n.properties.rel = "noreferrer noopener"
-            }
-          })
+      let captionText = ""
 
-          node.children = hast.type === "root" ? hast.children : [hast]
-          return
-        } catch (e) {}
+      if (textNode.type === "text") {
+        captionText = textNode.value.trim()
+      } else if (textNode.type === "element" && textNode.tagName === "p") {
+        captionText = textNode.children?.[0]?.value?.trim() || ""
+      }
 
-        // 2. Fallback: linkify raw URLs
-        const urlRegex = /https?:\/\/[^\s<)]+/g
-        const parts = text.split(urlRegex)
-        const matches = [...text.matchAll(urlRegex)]
+      if (!captionText) return
 
-        const newChildren: any[] = []
+      // Try Markdown parsing first
+      try {
+        const mdast = fromMarkdown(captionText)
+        let hast = toHast(mdast)
 
-        parts.forEach((part: string, i: number) => {
-          if (part) {
-            newChildren.push({ type: "text", value: part })
-          }
-          if (matches[i]) {
-            const url = matches[i][0]
-            newChildren.push({
-              type: "element",
-              tagName: "a",
-              properties: {
-                href: url,
-                target: "_blank",
-                rel: "noreferrer noopener"
-              },
-              children: [{ type: "text", value: url }]
-            })
+        visit(hast, (n: any) => {
+          if (n.type === "element" && n.tagName === "a") {
+            n.properties = n.properties || {}
+            n.properties.target = "_blank"
+            n.properties.rel = "noreferrer noopener"
           }
         })
 
-        if (newChildren.length > 0) {
-          node.children = newChildren
+        // Replace the content
+        if (textNode.type === "element" && textNode.tagName === "p") {
+          textNode.children = hast.type === "root" ? hast.children : [hast]
+        } else {
+          node.children = hast.type === "root" ? hast.children : [hast]
         }
+        return
+      } catch (e) {}
+
+      // Fallback: raw URL linkify
+      const urlRegex = /https?:\/\/[^\s<)]+/g
+      const matches = [...captionText.matchAll(urlRegex)]
+
+      if (matches.length === 0) return
+
+      const parts = captionText.split(urlRegex)
+      const newChildren: any[] = []
+
+      parts.forEach((part: string, i: number) => {
+        if (part) newChildren.push({ type: "text", value: part })
+        if (matches[i]) {
+          const url = matches[i][0]
+          newChildren.push({
+            type: "element",
+            tagName: "a",
+            properties: {
+              href: url,
+              target: "_blank",
+              rel: "noreferrer noopener"
+            },
+            children: [{ type: "text", value: url }]
+          })
+        }
+      })
+
+      if (textNode.type === "element" && textNode.tagName === "p") {
+        textNode.children = newChildren
+      } else {
+        node.children = newChildren
       }
     })
   }
