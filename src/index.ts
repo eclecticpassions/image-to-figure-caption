@@ -4,6 +4,7 @@ import { visit } from "unist-util-visit"
 import { fromMarkdown } from "mdast-util-from-markdown"
 import { toHast } from "mdast-util-to-hast"
 import type { Root } from "hast"
+import { remarkFigureCaption } from "./remarkFigureCaption"
 
 function rehypeRichCaption() {
   return (tree: Root) => {
@@ -18,7 +19,7 @@ function rehypeRichCaption() {
       const captionText = textNode.value.trim()
       if (!captionText) return
 
-      // Try full Markdown parsing first (preferred)
+      // Full MD parsing first
       try {
         const mdast = fromMarkdown(captionText)
         let hast = toHast(mdast)
@@ -72,10 +73,13 @@ function rehypeRichCaption() {
 
 export const RehypeFigure: QuartzTransformerPlugin = () => ({
   name: "rehypeFigureTitle",
+  markdownPlugins() {
+    return [remarkFigureCaption]
+  },
   htmlPlugins() {
     return [
       [rehypeFigureTitle, {}],
-      [rehypeRichCaption, {}]
+      [rehypeRichCaption, {}],
     ]
   },
 })

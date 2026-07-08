@@ -9714,6 +9714,24 @@ function toHast(tree, options) {
   return result;
 }
 
+// src/remarkFigureCaption.ts
+var remarkFigureCaption = () => {
+  return (tree) => {
+    visit(tree, "paragraph", (node2, index2, parent) => {
+      if (!parent || typeof index2 !== "number") return;
+      if (node2.children.length !== 1) return;
+      const child = node2.children[0];
+      if (child.type !== "image") return;
+      const image2 = child;
+      if (!image2.title) return;
+      parent.children[index2] = {
+        type: "html",
+        value: `<figure><img src="${image2.url}" alt="${image2.alt || ""}"><figcaption>${image2.title}</figcaption></figure>`
+      };
+    });
+  };
+};
+
 // src/index.ts
 function rehypeRichCaption() {
   return (tree) => {
@@ -9771,6 +9789,9 @@ function rehypeRichCaption() {
 }
 var RehypeFigure = () => ({
   name: "rehypeFigureTitle",
+  markdownPlugins() {
+    return [remarkFigureCaption];
+  },
   htmlPlugins() {
     return [
       [rehypeFigureTitle, {}],
