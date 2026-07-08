@@ -3,7 +3,7 @@
 This Quartz plugin adds the following features:
 
 - Use Markdown image syntax to generate `<figure>` and `<figcaption>` for HTML output
-- Diffrentiates between alt text and caption text as separate entities
+- Differentiates between alt text and caption text as separate entities
 - Supports Markdown link syntax inside caption text
 
 ## Usage Examples
@@ -64,7 +64,7 @@ figure {
 
 1. To install this plugin to your Quartz site, run:
 
-    `npx quartz plugin install github:eclecticpassions/image-to-figure-caption`.
+    `npx quartz plugin install github:eclecticpassions/image-to-figure-caption`
 
 2. To update the plugin, run it with the `--latest` flag like:
 
@@ -82,16 +82,18 @@ figure {
 ## Disclaimer
 
 > [!WARNING]
-> I used a few LLMs to help troubleshoot to get the `index.ts` file working. I am not a coder. Please review the code and packages before use. Check node package status by running `npm audit` regularly to check for vulnerabilities.
+> I used a few LLMs to help troubleshoot to get the `index.ts` file working. I am not a professional coder. Please review the code and packages before use. Check node package status by running `npm audit` regularly to check for vulnerabilities.
 
 - This plugin uses the official Quartz-community [plugin template](https://github.com/quartz-community/plugin-template)
 - Only Quartz v5.0.0 has been tested to work (if you run an older version of Quartz and want to test it, please open an issue, thanks!)
-- Depenencies include:
-  - [futuraprime/rehype-figure-title](https://www.npmjs.com/package/rehype-figure-title)
-  - mdast-util-from-markdown
-  - mdast-util-to-hast
-  - unist-util-visit
-  - @types/hast
+
+## Dependencies
+
+- [futuraprime/rehype-figure-title](https://www.npmjs.com/package/rehype-figure-title)
+- mdast-util-from-markdown
+- mdast-util-to-hast
+- unist-util-visit
+- @types/hast
 
 *Below is the README included in the Quartz plugin template.*
 

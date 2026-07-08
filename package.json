@@ -1,19 +1,22 @@
 {
   "name": "image-to-figure-caption",
   "version": "0.1.0",
-  "description": "Convert Markdown image syntax to HTML figure and figcaption in Quartz.",
+  "description": "Convert Markdown image syntax to HTML figure and figcaption",
   "type": "module",
   "license": "MIT",
-  "author": "Quartz Community",
-  "homepage": "https://quartz.jzhao.xyz",
+  "author": "Naty S",
+  "homepage": "https://burgeonlab.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/quartz-community/plugin-template"
+    "url": "https://github.com/eclecticpassions/image-to-figure-caption"
   },
   "keywords": [
     "quartz",
     "quartz-plugin",
-    "plugin-template",
+    "markdown",
+    "figure",
+    "figcaption",
+    "image",
     "remark",
     "rehype",
     "mdast",
@@ -100,6 +103,7 @@
   "quartz": {
     "name": "image-to-figure-caption",
     "displayName": "Image to Figure with Caption",
+    "description": "Convert Markdown image syntax to HTML figure and figcaption",
     "plugins": {"html": ["src/index"]},
     "category": "transformer",
     "version": "1.0.0",
@@ -116,13 +120,6 @@
           "**",
           "~~"
         ]
-      }
-    },
-    "components": {
-      "ExampleComponent": {
-        "displayName": "Example Component",
-        "defaultPosition": "right",
-        "defaultPriority": 50
       }
     }
   },
