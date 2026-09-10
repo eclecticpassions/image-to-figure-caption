@@ -11195,14 +11195,26 @@ var remarkFigureCaption = () => {
 // src/index.ts
 var import_image_size = __toESM(require_dist());
 function rehypeImageDimensions() {
-  return (tree) => {
+  return (tree, file) => {
     visit(tree, "element", (node2) => {
       if (node2.tagName !== "img") return;
       const src = node2.properties?.src;
       if (!src || src.startsWith("http") || src.startsWith("//") || src.startsWith("data:")) return;
-      const cleanSrc = src.replace(/^(\.\/|\/)/, "");
-      const assetPath = path.join(process.cwd(), "content", cleanSrc);
-      if (fs.existsSync(assetPath)) {
+      const cleanSrc = (src.split("?")[0] || "").replace(/^(\.\/|\/)/, "");
+      const fileDir = file?.path ? path.dirname(file.path) : process.cwd();
+      const possiblePaths = [
+        path.join(process.cwd(), "content", cleanSrc),
+        path.resolve(fileDir, cleanSrc),
+        path.join(process.cwd(), "static", cleanSrc)
+      ];
+      let assetPath = null;
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          assetPath = p;
+          break;
+        }
+      }
+      if (assetPath) {
         try {
           const dimensions = (0, import_image_size.imageSize)(assetPath);
           if (dimensions?.width && dimensions?.height) {

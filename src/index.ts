@@ -6,26 +6,37 @@ import { toHast } from "mdast-util-to-hast";
 import type { Root } from "hast";
 import { remarkFigureCaption } from "./remarkFigureCaption";
 import { imageSize } from "image-size";
+import type { VFile } from "vfile";
 import path from "path";
 import fs from "fs";
 
 // First function: Auto-calculate and inject image dimensions to fix anchor link jumping inaccurately
 function rehypeImageDimensions() {
-  return (tree: Root) => {
+  return (tree: Root, file?: VFile) => {
     visit(tree, "element", (node: any) => {
       if (node.tagName !== "img") return;
 
       const src = node.properties?.src as string;
-      // Ignore external or data URIs
       if (!src || src.startsWith("http") || src.startsWith("//") || src.startsWith("data:")) return;
 
-      // Remove leading slashes or dots (e.g., ./assets/images/pic.png -> assets/images/pic.png)
-      const cleanSrc = src.replace(/^(\.\/|\/)/, "");
+      const cleanSrc = (src.split("?")[0] || "").replace(/^(\.\/|\/)/, "");
+      const fileDir = file?.path ? path.dirname(file.path) : process.cwd();
 
-      // Resolve path against Quartz's default content directory
-      const assetPath = path.join(process.cwd(), "content", cleanSrc);
+      const possiblePaths = [
+        path.join(process.cwd(), "content", cleanSrc),
+        path.resolve(fileDir, cleanSrc),
+        path.join(process.cwd(), "static", cleanSrc),
+      ];
 
-      if (fs.existsSync(assetPath)) {
+      let assetPath: string | null = null;
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          assetPath = p;
+          break;
+        }
+      }
+
+      if (assetPath) {
         try {
           const dimensions = imageSize(assetPath);
           if (dimensions?.width && dimensions?.height) {
