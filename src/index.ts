@@ -1,87 +1,123 @@
-import rehypeFigureTitle from "rehype-figure-title"
-import type { QuartzTransformerPlugin } from "@quartz-community/types"
-import { visit } from "unist-util-visit"
-import { fromMarkdown } from "mdast-util-from-markdown"
-import { toHast } from "mdast-util-to-hast"
-import type { Root } from "hast"
-import { remarkFigureCaption } from "./remarkFigureCaption"
+import rehypeFigureTitle from "rehype-figure-title";
+import type { QuartzTransformerPlugin } from "@quartz-community/types";
+import { visit } from "unist-util-visit";
+import { fromMarkdown } from "mdast-util-from-markdown";
+import { toHast } from "mdast-util-to-hast";
+import type { Root } from "hast";
+import { remarkFigureCaption } from "./remarkFigureCaption";
+import { imageSize } from "image-size";
+import path from "path";
+import fs from "fs";
 
+// First function: Auto-calculate and inject image dimensions to fix anchor link jumping inaccurately
+function rehypeImageDimensions() {
+  return (tree: Root) => {
+    visit(tree, "element", (node: any) => {
+      if (node.tagName !== "img") return;
+
+      const src = node.properties?.src as string;
+      // Ignore external or data URIs
+      if (!src || src.startsWith("http") || src.startsWith("//") || src.startsWith("data:")) return;
+
+      // Remove leading slashes or dots (e.g., ./assets/images/pic.png -> assets/images/pic.png)
+      const cleanSrc = src.replace(/^(\.\/|\/)/, "");
+
+      // Resolve path against Quartz's default content directory
+      const assetPath = path.join(process.cwd(), "content", cleanSrc);
+
+      if (fs.existsSync(assetPath)) {
+        try {
+          const dimensions = imageSize(assetPath);
+          if (dimensions?.width && dimensions?.height) {
+            node.properties.width = dimensions.width;
+            node.properties.height = dimensions.height;
+          }
+        } catch (e) {
+          console.error(`Could not read dimensions for: ${assetPath}`);
+        }
+      }
+    });
+  };
+}
+
+// Second function: Add  captions to images
 function rehypeRichCaption() {
   return (tree: Root) => {
     visit(tree, "element", (node: any) => {
-      if (node.tagName !== "figcaption") return
+      if (node.tagName !== "figcaption") return;
 
-      const pNode = node.children.find((child: any) => child.tagName === "p")
-      const textNode = pNode ? pNode.children?.[0] : node.children?.[0]
+      const pNode = node.children.find((child: any) => child.tagName === "p");
+      const textNode = pNode ? pNode.children?.[0] : node.children?.[0];
 
-      if (!textNode || textNode.type !== "text") return
+      if (!textNode || textNode.type !== "text") return;
 
-      const captionText = textNode.value.trim()
-      if (!captionText) return
+      const captionText = textNode.value.trim();
+      if (!captionText) return;
 
       // Full MD parsing first
       try {
-        const mdast = fromMarkdown(captionText)
-        let hast = toHast(mdast)
+        const mdast = fromMarkdown(captionText);
+        let hast = toHast(mdast);
 
         visit(hast, (n: any) => {
           if (n.type === "element" && n.tagName === "a") {
-            n.properties = n.properties || {}
-            n.properties.target = "_blank"
-            n.properties.rel = "noreferrer noopener"
+            n.properties = n.properties || {};
+            n.properties.target = "_blank";
+            n.properties.rel = "noreferrer noopener";
           }
-        })
+        });
 
         if (pNode) {
-          pNode.children = hast.type === "root" ? hast.children : [hast]
+          pNode.children = hast.type === "root" ? hast.children : [hast];
         } else {
-          node.children = hast.type === "root" ? hast.children : [hast]
+          node.children = hast.type === "root" ? hast.children : [hast];
         }
-        return
+        return;
       } catch (e) {
         // Fallback to raw URL linkify
-        const urlRegex = /https?:\/\/[^\s<)]+/g
-        const matches = [...captionText.matchAll(urlRegex)]
+        const urlRegex = /https?:\/\/[^\s<)]+/g;
+        const matches = [...captionText.matchAll(urlRegex)];
         if (matches.length > 0) {
-          const parts = captionText.split(urlRegex)
-          const newChildren: any[] = []
+          const parts = captionText.split(urlRegex);
+          const newChildren: any[] = [];
 
           parts.forEach((part: string, i: number) => {
-            if (part) newChildren.push({ type: "text", value: part })
+            if (part) newChildren.push({ type: "text", value: part });
             if (matches[i]) {
-              const url = matches[i][0]
+              const url = matches[i][0];
               newChildren.push({
                 type: "element",
                 tagName: "a",
                 properties: {
                   href: url,
                   target: "_blank",
-                  rel: "noreferrer noopener"
+                  rel: "noreferrer noopener",
                 },
-                children: [{ type: "text", value: url }]
-              })
+                children: [{ type: "text", value: url }],
+              });
             }
-          })
+          });
 
-          if (pNode) pNode.children = newChildren
-          else node.children = newChildren
+          if (pNode) pNode.children = newChildren;
+          else node.children = newChildren;
         }
       }
-    })
-  }
+    });
+  };
 }
 
 export const RehypeFigure: QuartzTransformerPlugin = () => ({
   name: "rehypeFigureTitle",
   markdownPlugins() {
-    return [remarkFigureCaption]
+    return [remarkFigureCaption];
   },
   htmlPlugins() {
     return [
       [rehypeFigureTitle, {}],
+      [rehypeImageDimensions, {}], // Placed before rich caption
       [rehypeRichCaption, {}],
-    ]
+    ];
   },
-})
+});
 
-export default RehypeFigure
+export default RehypeFigure;

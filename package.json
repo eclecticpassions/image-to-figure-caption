@@ -1,6 +1,6 @@
 {
   "name": "image-to-figure-caption",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Convert Markdown image syntax to HTML figure and figcaption",
   "type": "module",
   "license": "MIT",
@@ -70,10 +70,11 @@
   "dependencies": {
     "@quartz-community/types": "github:quartz-community/types",
     "@quartz-community/utils": "github:quartz-community/utils",
+    "image-size": "^1.2.1",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-to-hast": "^13.2.1",
-    "unist-util-visit": "^5.0.0",
-    "rehype-figure-title": "^1.1.0"
+    "rehype-figure-title": "^1.1.0",
+    "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
     "@types/hast": "^3.0.4",

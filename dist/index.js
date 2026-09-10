@@ -1,11 +1,1471 @@
 import { createRequire } from 'module';
+import path from 'path';
+import fs from 'fs';
 
-createRequire(import.meta.url);
+const require$1 = createRequire(import.meta.url);
+var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __require = /* @__PURE__ */ ((x) => typeof require$1 !== "undefined" ? require$1 : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require$1 !== "undefined" ? require$1 : a)[b]
+}) : x)(function(x) {
+  if (typeof require$1 !== "undefined") return require$1.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
+var __commonJS = (cb, mod) => function __require2() {
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+};
 var __export = (target, all2) => {
   for (var name in all2)
     __defProp(target, name, { get: all2[name], enumerable: true });
 };
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  __defProp(target, "default", { value: mod, enumerable: true }) ,
+  mod
+));
+
+// node_modules/inherits/inherits_browser.js
+var require_inherits_browser = __commonJS({
+  "node_modules/inherits/inherits_browser.js"(exports, module) {
+    if (typeof Object.create === "function") {
+      module.exports = function inherits(ctor, superCtor) {
+        if (superCtor) {
+          ctor.super_ = superCtor;
+          ctor.prototype = Object.create(superCtor.prototype, {
+            constructor: {
+              value: ctor,
+              enumerable: false,
+              writable: true,
+              configurable: true
+            }
+          });
+        }
+      };
+    } else {
+      module.exports = function inherits(ctor, superCtor) {
+        if (superCtor) {
+          ctor.super_ = superCtor;
+          var TempCtor = function() {
+          };
+          TempCtor.prototype = superCtor.prototype;
+          ctor.prototype = new TempCtor();
+          ctor.prototype.constructor = ctor;
+        }
+      };
+    }
+  }
+});
+
+// node_modules/inherits/inherits.js
+var require_inherits = __commonJS({
+  "node_modules/inherits/inherits.js"(exports, module) {
+    try {
+      util = __require("util");
+      if (typeof util.inherits !== "function") throw "";
+      module.exports = util.inherits;
+    } catch (e) {
+      module.exports = require_inherits_browser();
+    }
+    var util;
+  }
+});
+
+// node_modules/queue/index.js
+var require_queue = __commonJS({
+  "node_modules/queue/index.js"(exports, module) {
+    var inherits = require_inherits();
+    var EventEmitter = __require("events").EventEmitter;
+    module.exports = Queue;
+    module.exports.default = Queue;
+    function Queue(options) {
+      if (!(this instanceof Queue)) {
+        return new Queue(options);
+      }
+      EventEmitter.call(this);
+      options = options || {};
+      this.concurrency = options.concurrency || Infinity;
+      this.timeout = options.timeout || 0;
+      this.autostart = options.autostart || false;
+      this.results = options.results || null;
+      this.pending = 0;
+      this.session = 0;
+      this.running = false;
+      this.jobs = [];
+      this.timers = {};
+    }
+    inherits(Queue, EventEmitter);
+    var arrayMethods = [
+      "pop",
+      "shift",
+      "indexOf",
+      "lastIndexOf"
+    ];
+    arrayMethods.forEach(function(method) {
+      Queue.prototype[method] = function() {
+        return Array.prototype[method].apply(this.jobs, arguments);
+      };
+    });
+    Queue.prototype.slice = function(begin, end) {
+      this.jobs = this.jobs.slice(begin, end);
+      return this;
+    };
+    Queue.prototype.reverse = function() {
+      this.jobs.reverse();
+      return this;
+    };
+    var arrayAddMethods = [
+      "push",
+      "unshift",
+      "splice"
+    ];
+    arrayAddMethods.forEach(function(method) {
+      Queue.prototype[method] = function() {
+        var methodResult = Array.prototype[method].apply(this.jobs, arguments);
+        if (this.autostart) {
+          this.start();
+        }
+        return methodResult;
+      };
+    });
+    Object.defineProperty(Queue.prototype, "length", {
+      get: function() {
+        return this.pending + this.jobs.length;
+      }
+    });
+    Queue.prototype.start = function(cb) {
+      if (cb) {
+        callOnErrorOrEnd.call(this, cb);
+      }
+      this.running = true;
+      if (this.pending >= this.concurrency) {
+        return;
+      }
+      if (this.jobs.length === 0) {
+        if (this.pending === 0) {
+          done.call(this);
+        }
+        return;
+      }
+      var self2 = this;
+      var job = this.jobs.shift();
+      var once = true;
+      var session = this.session;
+      var timeoutId = null;
+      var didTimeout = false;
+      var resultIndex = null;
+      var timeout = job.hasOwnProperty("timeout") ? job.timeout : this.timeout;
+      function next(err, result) {
+        if (once && self2.session === session) {
+          once = false;
+          self2.pending--;
+          if (timeoutId !== null) {
+            delete self2.timers[timeoutId];
+            clearTimeout(timeoutId);
+          }
+          if (err) {
+            self2.emit("error", err, job);
+          } else if (didTimeout === false) {
+            if (resultIndex !== null) {
+              self2.results[resultIndex] = Array.prototype.slice.call(arguments, 1);
+            }
+            self2.emit("success", result, job);
+          }
+          if (self2.session === session) {
+            if (self2.pending === 0 && self2.jobs.length === 0) {
+              done.call(self2);
+            } else if (self2.running) {
+              self2.start();
+            }
+          }
+        }
+      }
+      if (timeout) {
+        timeoutId = setTimeout(function() {
+          didTimeout = true;
+          if (self2.listeners("timeout").length > 0) {
+            self2.emit("timeout", next, job);
+          } else {
+            next();
+          }
+        }, timeout);
+        this.timers[timeoutId] = timeoutId;
+      }
+      if (this.results) {
+        resultIndex = this.results.length;
+        this.results[resultIndex] = null;
+      }
+      this.pending++;
+      self2.emit("start", job);
+      var promise = job(next);
+      if (promise && promise.then && typeof promise.then === "function") {
+        promise.then(function(result) {
+          return next(null, result);
+        }).catch(function(err) {
+          return next(err || true);
+        });
+      }
+      if (this.running && this.jobs.length > 0) {
+        this.start();
+      }
+    };
+    Queue.prototype.stop = function() {
+      this.running = false;
+    };
+    Queue.prototype.end = function(err) {
+      clearTimers.call(this);
+      this.jobs.length = 0;
+      this.pending = 0;
+      done.call(this, err);
+    };
+    function clearTimers() {
+      for (var key in this.timers) {
+        var timeoutId = this.timers[key];
+        delete this.timers[key];
+        clearTimeout(timeoutId);
+      }
+    }
+    function callOnErrorOrEnd(cb) {
+      var self2 = this;
+      this.on("error", onerror);
+      this.on("end", onend);
+      function onerror(err) {
+        self2.end(err);
+      }
+      function onend(err) {
+        self2.removeListener("error", onerror);
+        self2.removeListener("end", onend);
+        cb(err, this.results);
+      }
+    }
+    function done(err) {
+      this.session++;
+      this.running = false;
+      this.emit("end", err);
+    }
+  }
+});
+
+// node_modules/image-size/dist/types/utils.js
+var require_utils = __commonJS({
+  "node_modules/image-size/dist/types/utils.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.findBox = exports.readUInt = exports.readUInt32LE = exports.readUInt32BE = exports.readInt32LE = exports.readUInt24LE = exports.readUInt16LE = exports.readUInt16BE = exports.readInt16LE = exports.toHexString = exports.toUTF8String = void 0;
+    var decoder = new TextDecoder();
+    var toUTF8String = (input, start = 0, end = input.length) => decoder.decode(input.slice(start, end));
+    exports.toUTF8String = toUTF8String;
+    var toHexString = (input, start = 0, end = input.length) => input.slice(start, end).reduce((memo, i) => memo + ("0" + i.toString(16)).slice(-2), "");
+    exports.toHexString = toHexString;
+    var readInt16LE = (input, offset = 0) => {
+      const val = input[offset] + input[offset + 1] * 2 ** 8;
+      return val | (val & 2 ** 15) * 131070;
+    };
+    exports.readInt16LE = readInt16LE;
+    var readUInt16BE = (input, offset = 0) => input[offset] * 2 ** 8 + input[offset + 1];
+    exports.readUInt16BE = readUInt16BE;
+    var readUInt16LE = (input, offset = 0) => input[offset] + input[offset + 1] * 2 ** 8;
+    exports.readUInt16LE = readUInt16LE;
+    var readUInt24LE = (input, offset = 0) => input[offset] + input[offset + 1] * 2 ** 8 + input[offset + 2] * 2 ** 16;
+    exports.readUInt24LE = readUInt24LE;
+    var readInt32LE = (input, offset = 0) => input[offset] + input[offset + 1] * 2 ** 8 + input[offset + 2] * 2 ** 16 + (input[offset + 3] << 24);
+    exports.readInt32LE = readInt32LE;
+    var readUInt32BE = (input, offset = 0) => input[offset] * 2 ** 24 + input[offset + 1] * 2 ** 16 + input[offset + 2] * 2 ** 8 + input[offset + 3];
+    exports.readUInt32BE = readUInt32BE;
+    var readUInt32LE = (input, offset = 0) => input[offset] + input[offset + 1] * 2 ** 8 + input[offset + 2] * 2 ** 16 + input[offset + 3] * 2 ** 24;
+    exports.readUInt32LE = readUInt32LE;
+    var methods = {
+      readUInt16BE: exports.readUInt16BE,
+      readUInt16LE: exports.readUInt16LE,
+      readUInt32BE: exports.readUInt32BE,
+      readUInt32LE: exports.readUInt32LE
+    };
+    function readUInt(input, bits, offset, isBigEndian) {
+      offset = offset || 0;
+      const endian = isBigEndian ? "BE" : "LE";
+      const methodName = "readUInt" + bits + endian;
+      return methods[methodName](input, offset);
+    }
+    exports.readUInt = readUInt;
+    function readBox(input, offset) {
+      if (input.length - offset < 4)
+        return;
+      const boxSize = (0, exports.readUInt32BE)(input, offset);
+      if (input.length - offset < boxSize)
+        return;
+      return {
+        name: (0, exports.toUTF8String)(input, 4 + offset, 8 + offset),
+        offset,
+        size: boxSize
+      };
+    }
+    function findBox(input, boxName, offset) {
+      while (offset < input.length) {
+        const box = readBox(input, offset);
+        if (!box)
+          break;
+        if (box.name === boxName)
+          return box;
+        offset += box.size > 0 ? box.size : 8;
+      }
+    }
+    exports.findBox = findBox;
+  }
+});
+
+// node_modules/image-size/dist/types/bmp.js
+var require_bmp = __commonJS({
+  "node_modules/image-size/dist/types/bmp.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.BMP = void 0;
+    var utils_1 = require_utils();
+    exports.BMP = {
+      validate: (input) => (0, utils_1.toUTF8String)(input, 0, 2) === "BM",
+      calculate: (input) => ({
+        height: Math.abs((0, utils_1.readInt32LE)(input, 22)),
+        width: (0, utils_1.readUInt32LE)(input, 18)
+      })
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/ico.js
+var require_ico = __commonJS({
+  "node_modules/image-size/dist/types/ico.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.ICO = void 0;
+    var utils_1 = require_utils();
+    var TYPE_ICON = 1;
+    var SIZE_HEADER = 2 + 2 + 2;
+    var SIZE_IMAGE_ENTRY = 1 + 1 + 1 + 1 + 2 + 2 + 4 + 4;
+    function getSizeFromOffset(input, offset) {
+      const value = input[offset];
+      return value === 0 ? 256 : value;
+    }
+    function getImageSize(input, imageIndex) {
+      const offset = SIZE_HEADER + imageIndex * SIZE_IMAGE_ENTRY;
+      return {
+        height: getSizeFromOffset(input, offset + 1),
+        width: getSizeFromOffset(input, offset)
+      };
+    }
+    exports.ICO = {
+      validate(input) {
+        const reserved = (0, utils_1.readUInt16LE)(input, 0);
+        const imageCount = (0, utils_1.readUInt16LE)(input, 4);
+        if (reserved !== 0 || imageCount === 0)
+          return false;
+        const imageType = (0, utils_1.readUInt16LE)(input, 2);
+        return imageType === TYPE_ICON;
+      },
+      calculate(input) {
+        const nbImages = (0, utils_1.readUInt16LE)(input, 4);
+        const imageSize2 = getImageSize(input, 0);
+        if (nbImages === 1)
+          return imageSize2;
+        const imgs = [imageSize2];
+        for (let imageIndex = 1; imageIndex < nbImages; imageIndex += 1) {
+          imgs.push(getImageSize(input, imageIndex));
+        }
+        return {
+          height: imageSize2.height,
+          images: imgs,
+          width: imageSize2.width
+        };
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/cur.js
+var require_cur = __commonJS({
+  "node_modules/image-size/dist/types/cur.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.CUR = void 0;
+    var ico_1 = require_ico();
+    var utils_1 = require_utils();
+    var TYPE_CURSOR = 2;
+    exports.CUR = {
+      validate(input) {
+        const reserved = (0, utils_1.readUInt16LE)(input, 0);
+        const imageCount = (0, utils_1.readUInt16LE)(input, 4);
+        if (reserved !== 0 || imageCount === 0)
+          return false;
+        const imageType = (0, utils_1.readUInt16LE)(input, 2);
+        return imageType === TYPE_CURSOR;
+      },
+      calculate: (input) => ico_1.ICO.calculate(input)
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/dds.js
+var require_dds = __commonJS({
+  "node_modules/image-size/dist/types/dds.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.DDS = void 0;
+    var utils_1 = require_utils();
+    exports.DDS = {
+      validate: (input) => (0, utils_1.readUInt32LE)(input, 0) === 542327876,
+      calculate: (input) => ({
+        height: (0, utils_1.readUInt32LE)(input, 12),
+        width: (0, utils_1.readUInt32LE)(input, 16)
+      })
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/gif.js
+var require_gif = __commonJS({
+  "node_modules/image-size/dist/types/gif.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.GIF = void 0;
+    var utils_1 = require_utils();
+    var gifRegexp = /^GIF8[79]a/;
+    exports.GIF = {
+      validate: (input) => gifRegexp.test((0, utils_1.toUTF8String)(input, 0, 6)),
+      calculate: (input) => ({
+        height: (0, utils_1.readUInt16LE)(input, 8),
+        width: (0, utils_1.readUInt16LE)(input, 6)
+      })
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/heif.js
+var require_heif = __commonJS({
+  "node_modules/image-size/dist/types/heif.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.HEIF = void 0;
+    var utils_1 = require_utils();
+    var brandMap = {
+      avif: "avif",
+      mif1: "heif",
+      msf1: "heif",
+      // heif-sequence
+      heic: "heic",
+      heix: "heic",
+      hevc: "heic",
+      // heic-sequence
+      hevx: "heic"
+      // heic-sequence
+    };
+    exports.HEIF = {
+      validate(input) {
+        const boxType = (0, utils_1.toUTF8String)(input, 4, 8);
+        if (boxType !== "ftyp")
+          return false;
+        const ftypBox = (0, utils_1.findBox)(input, "ftyp", 0);
+        if (!ftypBox)
+          return false;
+        const brand = (0, utils_1.toUTF8String)(input, ftypBox.offset + 8, ftypBox.offset + 12);
+        return brand in brandMap;
+      },
+      calculate(input) {
+        const metaBox = (0, utils_1.findBox)(input, "meta", 0);
+        const iprpBox = metaBox && (0, utils_1.findBox)(input, "iprp", metaBox.offset + 12);
+        const ipcoBox = iprpBox && (0, utils_1.findBox)(input, "ipco", iprpBox.offset + 8);
+        const ispeBox = ipcoBox && (0, utils_1.findBox)(input, "ispe", ipcoBox.offset + 8);
+        if (ispeBox) {
+          return {
+            height: (0, utils_1.readUInt32BE)(input, ispeBox.offset + 16),
+            width: (0, utils_1.readUInt32BE)(input, ispeBox.offset + 12),
+            type: (0, utils_1.toUTF8String)(input, 8, 12)
+          };
+        }
+        throw new TypeError("Invalid HEIF, no size found");
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/icns.js
+var require_icns = __commonJS({
+  "node_modules/image-size/dist/types/icns.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.ICNS = void 0;
+    var utils_1 = require_utils();
+    var SIZE_HEADER = 4 + 4;
+    var FILE_LENGTH_OFFSET = 4;
+    var ENTRY_LENGTH_OFFSET = 4;
+    var ICON_TYPE_SIZE = {
+      ICON: 32,
+      "ICN#": 32,
+      // m => 16 x 16
+      "icm#": 16,
+      icm4: 16,
+      icm8: 16,
+      // s => 16 x 16
+      "ics#": 16,
+      ics4: 16,
+      ics8: 16,
+      is32: 16,
+      s8mk: 16,
+      icp4: 16,
+      // l => 32 x 32
+      icl4: 32,
+      icl8: 32,
+      il32: 32,
+      l8mk: 32,
+      icp5: 32,
+      ic11: 32,
+      // h => 48 x 48
+      ich4: 48,
+      ich8: 48,
+      ih32: 48,
+      h8mk: 48,
+      // . => 64 x 64
+      icp6: 64,
+      ic12: 32,
+      // t => 128 x 128
+      it32: 128,
+      t8mk: 128,
+      ic07: 128,
+      // . => 256 x 256
+      ic08: 256,
+      ic13: 256,
+      // . => 512 x 512
+      ic09: 512,
+      ic14: 512,
+      // . => 1024 x 1024
+      ic10: 1024
+    };
+    function readImageHeader(input, imageOffset) {
+      const imageLengthOffset = imageOffset + ENTRY_LENGTH_OFFSET;
+      return [
+        (0, utils_1.toUTF8String)(input, imageOffset, imageLengthOffset),
+        (0, utils_1.readUInt32BE)(input, imageLengthOffset)
+      ];
+    }
+    function getImageSize(type) {
+      const size = ICON_TYPE_SIZE[type];
+      return { width: size, height: size, type };
+    }
+    exports.ICNS = {
+      validate: (input) => (0, utils_1.toUTF8String)(input, 0, 4) === "icns",
+      calculate(input) {
+        const inputLength = input.length;
+        const fileLength = (0, utils_1.readUInt32BE)(input, FILE_LENGTH_OFFSET);
+        let imageOffset = SIZE_HEADER;
+        let imageHeader = readImageHeader(input, imageOffset);
+        let imageSize2 = getImageSize(imageHeader[0]);
+        imageOffset += imageHeader[1];
+        if (imageOffset === fileLength)
+          return imageSize2;
+        const result = {
+          height: imageSize2.height,
+          images: [imageSize2],
+          width: imageSize2.width
+        };
+        while (imageOffset < fileLength && imageOffset < inputLength) {
+          imageHeader = readImageHeader(input, imageOffset);
+          imageSize2 = getImageSize(imageHeader[0]);
+          imageOffset += imageHeader[1];
+          result.images.push(imageSize2);
+        }
+        return result;
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/j2c.js
+var require_j2c = __commonJS({
+  "node_modules/image-size/dist/types/j2c.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.J2C = void 0;
+    var utils_1 = require_utils();
+    exports.J2C = {
+      // TODO: this doesn't seem right. SIZ marker doesn't have to be right after the SOC
+      validate: (input) => (0, utils_1.readUInt32BE)(input, 0) === 4283432785,
+      calculate: (input) => ({
+        height: (0, utils_1.readUInt32BE)(input, 12),
+        width: (0, utils_1.readUInt32BE)(input, 8)
+      })
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/jp2.js
+var require_jp2 = __commonJS({
+  "node_modules/image-size/dist/types/jp2.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.JP2 = void 0;
+    var utils_1 = require_utils();
+    exports.JP2 = {
+      validate(input) {
+        const boxType = (0, utils_1.toUTF8String)(input, 4, 8);
+        if (boxType !== "jP  ")
+          return false;
+        const ftypBox = (0, utils_1.findBox)(input, "ftyp", 0);
+        if (!ftypBox)
+          return false;
+        const brand = (0, utils_1.toUTF8String)(input, ftypBox.offset + 8, ftypBox.offset + 12);
+        return brand === "jp2 ";
+      },
+      calculate(input) {
+        const jp2hBox = (0, utils_1.findBox)(input, "jp2h", 0);
+        const ihdrBox = jp2hBox && (0, utils_1.findBox)(input, "ihdr", jp2hBox.offset + 8);
+        if (ihdrBox) {
+          return {
+            height: (0, utils_1.readUInt32BE)(input, ihdrBox.offset + 8),
+            width: (0, utils_1.readUInt32BE)(input, ihdrBox.offset + 12)
+          };
+        }
+        throw new TypeError("Unsupported JPEG 2000 format");
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/jpg.js
+var require_jpg = __commonJS({
+  "node_modules/image-size/dist/types/jpg.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.JPG = void 0;
+    var utils_1 = require_utils();
+    var EXIF_MARKER = "45786966";
+    var APP1_DATA_SIZE_BYTES = 2;
+    var EXIF_HEADER_BYTES = 6;
+    var TIFF_BYTE_ALIGN_BYTES = 2;
+    var BIG_ENDIAN_BYTE_ALIGN = "4d4d";
+    var LITTLE_ENDIAN_BYTE_ALIGN = "4949";
+    var IDF_ENTRY_BYTES = 12;
+    var NUM_DIRECTORY_ENTRIES_BYTES = 2;
+    function isEXIF(input) {
+      return (0, utils_1.toHexString)(input, 2, 6) === EXIF_MARKER;
+    }
+    function extractSize(input, index2) {
+      return {
+        height: (0, utils_1.readUInt16BE)(input, index2),
+        width: (0, utils_1.readUInt16BE)(input, index2 + 2)
+      };
+    }
+    function extractOrientation(exifBlock, isBigEndian) {
+      const idfOffset = 8;
+      const offset = EXIF_HEADER_BYTES + idfOffset;
+      const idfDirectoryEntries = (0, utils_1.readUInt)(exifBlock, 16, offset, isBigEndian);
+      for (let directoryEntryNumber = 0; directoryEntryNumber < idfDirectoryEntries; directoryEntryNumber++) {
+        const start = offset + NUM_DIRECTORY_ENTRIES_BYTES + directoryEntryNumber * IDF_ENTRY_BYTES;
+        const end = start + IDF_ENTRY_BYTES;
+        if (start > exifBlock.length) {
+          return;
+        }
+        const block = exifBlock.slice(start, end);
+        const tagNumber = (0, utils_1.readUInt)(block, 16, 0, isBigEndian);
+        if (tagNumber === 274) {
+          const dataFormat = (0, utils_1.readUInt)(block, 16, 2, isBigEndian);
+          if (dataFormat !== 3) {
+            return;
+          }
+          const numberOfComponents = (0, utils_1.readUInt)(block, 32, 4, isBigEndian);
+          if (numberOfComponents !== 1) {
+            return;
+          }
+          return (0, utils_1.readUInt)(block, 16, 8, isBigEndian);
+        }
+      }
+    }
+    function validateExifBlock(input, index2) {
+      const exifBlock = input.slice(APP1_DATA_SIZE_BYTES, index2);
+      const byteAlign = (0, utils_1.toHexString)(exifBlock, EXIF_HEADER_BYTES, EXIF_HEADER_BYTES + TIFF_BYTE_ALIGN_BYTES);
+      const isBigEndian = byteAlign === BIG_ENDIAN_BYTE_ALIGN;
+      const isLittleEndian = byteAlign === LITTLE_ENDIAN_BYTE_ALIGN;
+      if (isBigEndian || isLittleEndian) {
+        return extractOrientation(exifBlock, isBigEndian);
+      }
+    }
+    function validateInput(input, index2) {
+      if (index2 > input.length) {
+        throw new TypeError("Corrupt JPG, exceeded buffer limits");
+      }
+    }
+    exports.JPG = {
+      validate: (input) => (0, utils_1.toHexString)(input, 0, 2) === "ffd8",
+      calculate(input) {
+        input = input.slice(4);
+        let orientation;
+        let next;
+        while (input.length) {
+          const i = (0, utils_1.readUInt16BE)(input, 0);
+          if (input[i] !== 255) {
+            input = input.slice(1);
+            continue;
+          }
+          if (isEXIF(input)) {
+            orientation = validateExifBlock(input, i);
+          }
+          validateInput(input, i);
+          next = input[i + 1];
+          if (next === 192 || next === 193 || next === 194) {
+            const size = extractSize(input, i + 5);
+            if (!orientation) {
+              return size;
+            }
+            return {
+              height: size.height,
+              orientation,
+              width: size.width
+            };
+          }
+          input = input.slice(i + 2);
+        }
+        throw new TypeError("Invalid JPG, no size found");
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/utils/bit-reader.js
+var require_bit_reader = __commonJS({
+  "node_modules/image-size/dist/utils/bit-reader.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.BitReader = void 0;
+    var BitReader = class {
+      constructor(input, endianness) {
+        this.input = input;
+        this.endianness = endianness;
+        this.byteOffset = 2;
+        this.bitOffset = 0;
+      }
+      /** Reads a specified number of bits, and move the offset */
+      getBits(length = 1) {
+        let result = 0;
+        let bitsRead = 0;
+        while (bitsRead < length) {
+          if (this.byteOffset >= this.input.length) {
+            throw new Error("Reached end of input");
+          }
+          const currentByte = this.input[this.byteOffset];
+          const bitsLeft = 8 - this.bitOffset;
+          const bitsToRead = Math.min(length - bitsRead, bitsLeft);
+          if (this.endianness === "little-endian") {
+            const mask = (1 << bitsToRead) - 1;
+            const bits = currentByte >> this.bitOffset & mask;
+            result |= bits << bitsRead;
+          } else {
+            const mask = (1 << bitsToRead) - 1 << 8 - this.bitOffset - bitsToRead;
+            const bits = (currentByte & mask) >> 8 - this.bitOffset - bitsToRead;
+            result = result << bitsToRead | bits;
+          }
+          bitsRead += bitsToRead;
+          this.bitOffset += bitsToRead;
+          if (this.bitOffset === 8) {
+            this.byteOffset++;
+            this.bitOffset = 0;
+          }
+        }
+        return result;
+      }
+    };
+    exports.BitReader = BitReader;
+  }
+});
+
+// node_modules/image-size/dist/types/jxl-stream.js
+var require_jxl_stream = __commonJS({
+  "node_modules/image-size/dist/types/jxl-stream.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.JXLStream = void 0;
+    var utils_1 = require_utils();
+    var bit_reader_1 = require_bit_reader();
+    function calculateImageDimension(reader, isSmallImage) {
+      if (isSmallImage) {
+        return 8 * (1 + reader.getBits(5));
+      } else {
+        const sizeClass = reader.getBits(2);
+        const extraBits = [9, 13, 18, 30][sizeClass];
+        return 1 + reader.getBits(extraBits);
+      }
+    }
+    function calculateImageWidth(reader, isSmallImage, widthMode, height) {
+      if (isSmallImage && widthMode === 0) {
+        return 8 * (1 + reader.getBits(5));
+      } else if (widthMode === 0) {
+        return calculateImageDimension(reader, false);
+      } else {
+        const aspectRatios = [1, 1.2, 4 / 3, 1.5, 16 / 9, 5 / 4, 2];
+        return Math.floor(height * aspectRatios[widthMode - 1]);
+      }
+    }
+    exports.JXLStream = {
+      validate: (input) => {
+        return (0, utils_1.toHexString)(input, 0, 2) === "ff0a";
+      },
+      calculate(input) {
+        const reader = new bit_reader_1.BitReader(input, "little-endian");
+        const isSmallImage = reader.getBits(1) === 1;
+        const height = calculateImageDimension(reader, isSmallImage);
+        const widthMode = reader.getBits(3);
+        const width = calculateImageWidth(reader, isSmallImage, widthMode, height);
+        return { width, height };
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/jxl.js
+var require_jxl = __commonJS({
+  "node_modules/image-size/dist/types/jxl.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.JXL = void 0;
+    var utils_1 = require_utils();
+    var jxl_stream_1 = require_jxl_stream();
+    function extractCodestream(input) {
+      const jxlcBox = (0, utils_1.findBox)(input, "jxlc", 0);
+      if (jxlcBox) {
+        return input.slice(jxlcBox.offset + 8, jxlcBox.offset + jxlcBox.size);
+      }
+      const partialStreams = extractPartialStreams(input);
+      if (partialStreams.length > 0) {
+        return concatenateCodestreams(partialStreams);
+      }
+      return void 0;
+    }
+    function extractPartialStreams(input) {
+      const partialStreams = [];
+      let offset = 0;
+      while (offset < input.length) {
+        const jxlpBox = (0, utils_1.findBox)(input, "jxlp", offset);
+        if (!jxlpBox)
+          break;
+        partialStreams.push(input.slice(jxlpBox.offset + 12, jxlpBox.offset + jxlpBox.size));
+        offset = jxlpBox.offset + jxlpBox.size;
+      }
+      return partialStreams;
+    }
+    function concatenateCodestreams(partialCodestreams) {
+      const totalLength = partialCodestreams.reduce((acc, curr) => acc + curr.length, 0);
+      const codestream = new Uint8Array(totalLength);
+      let position3 = 0;
+      for (const partial of partialCodestreams) {
+        codestream.set(partial, position3);
+        position3 += partial.length;
+      }
+      return codestream;
+    }
+    exports.JXL = {
+      validate: (input) => {
+        const boxType = (0, utils_1.toUTF8String)(input, 4, 8);
+        if (boxType !== "JXL ")
+          return false;
+        const ftypBox = (0, utils_1.findBox)(input, "ftyp", 0);
+        if (!ftypBox)
+          return false;
+        const brand = (0, utils_1.toUTF8String)(input, ftypBox.offset + 8, ftypBox.offset + 12);
+        return brand === "jxl ";
+      },
+      calculate(input) {
+        const codestream = extractCodestream(input);
+        if (codestream)
+          return jxl_stream_1.JXLStream.calculate(codestream);
+        throw new Error("No codestream found in JXL container");
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/ktx.js
+var require_ktx = __commonJS({
+  "node_modules/image-size/dist/types/ktx.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.KTX = void 0;
+    var utils_1 = require_utils();
+    exports.KTX = {
+      validate: (input) => {
+        const signature = (0, utils_1.toUTF8String)(input, 1, 7);
+        return ["KTX 11", "KTX 20"].includes(signature);
+      },
+      calculate: (input) => {
+        const type = input[5] === 49 ? "ktx" : "ktx2";
+        const offset = type === "ktx" ? 36 : 20;
+        return {
+          height: (0, utils_1.readUInt32LE)(input, offset + 4),
+          width: (0, utils_1.readUInt32LE)(input, offset),
+          type
+        };
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/png.js
+var require_png = __commonJS({
+  "node_modules/image-size/dist/types/png.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.PNG = void 0;
+    var utils_1 = require_utils();
+    var pngSignature = "PNG\r\n\n";
+    var pngImageHeaderChunkName = "IHDR";
+    var pngFriedChunkName = "CgBI";
+    exports.PNG = {
+      validate(input) {
+        if (pngSignature === (0, utils_1.toUTF8String)(input, 1, 8)) {
+          let chunkName = (0, utils_1.toUTF8String)(input, 12, 16);
+          if (chunkName === pngFriedChunkName) {
+            chunkName = (0, utils_1.toUTF8String)(input, 28, 32);
+          }
+          if (chunkName !== pngImageHeaderChunkName) {
+            throw new TypeError("Invalid PNG");
+          }
+          return true;
+        }
+        return false;
+      },
+      calculate(input) {
+        if ((0, utils_1.toUTF8String)(input, 12, 16) === pngFriedChunkName) {
+          return {
+            height: (0, utils_1.readUInt32BE)(input, 36),
+            width: (0, utils_1.readUInt32BE)(input, 32)
+          };
+        }
+        return {
+          height: (0, utils_1.readUInt32BE)(input, 20),
+          width: (0, utils_1.readUInt32BE)(input, 16)
+        };
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/pnm.js
+var require_pnm = __commonJS({
+  "node_modules/image-size/dist/types/pnm.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.PNM = void 0;
+    var utils_1 = require_utils();
+    var PNMTypes = {
+      P1: "pbm/ascii",
+      P2: "pgm/ascii",
+      P3: "ppm/ascii",
+      P4: "pbm",
+      P5: "pgm",
+      P6: "ppm",
+      P7: "pam",
+      PF: "pfm"
+    };
+    var handlers2 = {
+      default: (lines) => {
+        let dimensions = [];
+        while (lines.length > 0) {
+          const line = lines.shift();
+          if (line[0] === "#") {
+            continue;
+          }
+          dimensions = line.split(" ");
+          break;
+        }
+        if (dimensions.length === 2) {
+          return {
+            height: parseInt(dimensions[1], 10),
+            width: parseInt(dimensions[0], 10)
+          };
+        } else {
+          throw new TypeError("Invalid PNM");
+        }
+      },
+      pam: (lines) => {
+        const size = {};
+        while (lines.length > 0) {
+          const line = lines.shift();
+          if (line.length > 16 || line.charCodeAt(0) > 128) {
+            continue;
+          }
+          const [key, value] = line.split(" ");
+          if (key && value) {
+            size[key.toLowerCase()] = parseInt(value, 10);
+          }
+          if (size.height && size.width) {
+            break;
+          }
+        }
+        if (size.height && size.width) {
+          return {
+            height: size.height,
+            width: size.width
+          };
+        } else {
+          throw new TypeError("Invalid PAM");
+        }
+      }
+    };
+    exports.PNM = {
+      validate: (input) => (0, utils_1.toUTF8String)(input, 0, 2) in PNMTypes,
+      calculate(input) {
+        const signature = (0, utils_1.toUTF8String)(input, 0, 2);
+        const type = PNMTypes[signature];
+        const lines = (0, utils_1.toUTF8String)(input, 3).split(/[\r\n]+/);
+        const handler = handlers2[type] || handlers2.default;
+        return handler(lines);
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/psd.js
+var require_psd = __commonJS({
+  "node_modules/image-size/dist/types/psd.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.PSD = void 0;
+    var utils_1 = require_utils();
+    exports.PSD = {
+      validate: (input) => (0, utils_1.toUTF8String)(input, 0, 4) === "8BPS",
+      calculate: (input) => ({
+        height: (0, utils_1.readUInt32BE)(input, 14),
+        width: (0, utils_1.readUInt32BE)(input, 18)
+      })
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/svg.js
+var require_svg = __commonJS({
+  "node_modules/image-size/dist/types/svg.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.SVG = void 0;
+    var utils_1 = require_utils();
+    var svgReg = /<svg\s([^>"']|"[^"]*"|'[^']*')*>/;
+    var extractorRegExps = {
+      height: /\sheight=(['"])([^%]+?)\1/,
+      root: svgReg,
+      viewbox: /\sviewBox=(['"])(.+?)\1/i,
+      width: /\swidth=(['"])([^%]+?)\1/
+    };
+    var INCH_CM = 2.54;
+    var units = {
+      in: 96,
+      cm: 96 / INCH_CM,
+      em: 16,
+      ex: 8,
+      m: 96 / INCH_CM * 100,
+      mm: 96 / INCH_CM / 10,
+      pc: 96 / 72 / 12,
+      pt: 96 / 72,
+      px: 1
+    };
+    var unitsReg = new RegExp(`^([0-9.]+(?:e\\d+)?)(${Object.keys(units).join("|")})?$`);
+    function parseLength(len) {
+      const m = unitsReg.exec(len);
+      if (!m) {
+        return void 0;
+      }
+      return Math.round(Number(m[1]) * (units[m[2]] || 1));
+    }
+    function parseViewbox(viewbox) {
+      const bounds = viewbox.split(" ");
+      return {
+        height: parseLength(bounds[3]),
+        width: parseLength(bounds[2])
+      };
+    }
+    function parseAttributes(root2) {
+      const width = root2.match(extractorRegExps.width);
+      const height = root2.match(extractorRegExps.height);
+      const viewbox = root2.match(extractorRegExps.viewbox);
+      return {
+        height: height && parseLength(height[2]),
+        viewbox: viewbox && parseViewbox(viewbox[2]),
+        width: width && parseLength(width[2])
+      };
+    }
+    function calculateByDimensions(attrs) {
+      return {
+        height: attrs.height,
+        width: attrs.width
+      };
+    }
+    function calculateByViewbox(attrs, viewbox) {
+      const ratio = viewbox.width / viewbox.height;
+      if (attrs.width) {
+        return {
+          height: Math.floor(attrs.width / ratio),
+          width: attrs.width
+        };
+      }
+      if (attrs.height) {
+        return {
+          height: attrs.height,
+          width: Math.floor(attrs.height * ratio)
+        };
+      }
+      return {
+        height: viewbox.height,
+        width: viewbox.width
+      };
+    }
+    exports.SVG = {
+      // Scan only the first kilo-byte to speed up the check on larger files
+      validate: (input) => svgReg.test((0, utils_1.toUTF8String)(input, 0, 1e3)),
+      calculate(input) {
+        const root2 = (0, utils_1.toUTF8String)(input).match(extractorRegExps.root);
+        if (root2) {
+          const attrs = parseAttributes(root2[0]);
+          if (attrs.width && attrs.height) {
+            return calculateByDimensions(attrs);
+          }
+          if (attrs.viewbox) {
+            return calculateByViewbox(attrs, attrs.viewbox);
+          }
+        }
+        throw new TypeError("Invalid SVG");
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/tga.js
+var require_tga = __commonJS({
+  "node_modules/image-size/dist/types/tga.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.TGA = void 0;
+    var utils_1 = require_utils();
+    exports.TGA = {
+      validate(input) {
+        return (0, utils_1.readUInt16LE)(input, 0) === 0 && (0, utils_1.readUInt16LE)(input, 4) === 0;
+      },
+      calculate(input) {
+        return {
+          height: (0, utils_1.readUInt16LE)(input, 14),
+          width: (0, utils_1.readUInt16LE)(input, 12)
+        };
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/tiff.js
+var require_tiff = __commonJS({
+  "node_modules/image-size/dist/types/tiff.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.TIFF = void 0;
+    var fs2 = __require("fs");
+    var utils_1 = require_utils();
+    function readIFD(input, filepath, isBigEndian) {
+      const ifdOffset = (0, utils_1.readUInt)(input, 32, 4, isBigEndian);
+      let bufferSize = 1024;
+      const fileSize = fs2.statSync(filepath).size;
+      if (ifdOffset + bufferSize > fileSize) {
+        bufferSize = fileSize - ifdOffset - 10;
+      }
+      const endBuffer = new Uint8Array(bufferSize);
+      const descriptor = fs2.openSync(filepath, "r");
+      fs2.readSync(descriptor, endBuffer, 0, bufferSize, ifdOffset);
+      fs2.closeSync(descriptor);
+      return endBuffer.slice(2);
+    }
+    function readValue(input, isBigEndian) {
+      const low = (0, utils_1.readUInt)(input, 16, 8, isBigEndian);
+      const high = (0, utils_1.readUInt)(input, 16, 10, isBigEndian);
+      return (high << 16) + low;
+    }
+    function nextTag(input) {
+      if (input.length > 24) {
+        return input.slice(12);
+      }
+    }
+    function extractTags(input, isBigEndian) {
+      const tags = {};
+      let temp = input;
+      while (temp && temp.length) {
+        const code2 = (0, utils_1.readUInt)(temp, 16, 0, isBigEndian);
+        const type = (0, utils_1.readUInt)(temp, 16, 2, isBigEndian);
+        const length = (0, utils_1.readUInt)(temp, 32, 4, isBigEndian);
+        if (code2 === 0) {
+          break;
+        } else {
+          if (length === 1 && (type === 3 || type === 4)) {
+            tags[code2] = readValue(temp, isBigEndian);
+          }
+          temp = nextTag(temp);
+        }
+      }
+      return tags;
+    }
+    function determineEndianness(input) {
+      const signature = (0, utils_1.toUTF8String)(input, 0, 2);
+      if ("II" === signature) {
+        return "LE";
+      } else if ("MM" === signature) {
+        return "BE";
+      }
+    }
+    var signatures = [
+      // '492049', // currently not supported
+      "49492a00",
+      // Little endian
+      "4d4d002a"
+      // Big Endian
+      // '4d4d002a', // BigTIFF > 4GB. currently not supported
+    ];
+    exports.TIFF = {
+      validate: (input) => signatures.includes((0, utils_1.toHexString)(input, 0, 4)),
+      calculate(input, filepath) {
+        if (!filepath) {
+          throw new TypeError("Tiff doesn't support buffer");
+        }
+        const isBigEndian = determineEndianness(input) === "BE";
+        const ifdBuffer = readIFD(input, filepath, isBigEndian);
+        const tags = extractTags(ifdBuffer, isBigEndian);
+        const width = tags[256];
+        const height = tags[257];
+        if (!width || !height) {
+          throw new TypeError("Invalid Tiff. Missing tags");
+        }
+        return { height, width };
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/webp.js
+var require_webp = __commonJS({
+  "node_modules/image-size/dist/types/webp.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.WEBP = void 0;
+    var utils_1 = require_utils();
+    function calculateExtended(input) {
+      return {
+        height: 1 + (0, utils_1.readUInt24LE)(input, 7),
+        width: 1 + (0, utils_1.readUInt24LE)(input, 4)
+      };
+    }
+    function calculateLossless(input) {
+      return {
+        height: 1 + ((input[4] & 15) << 10 | input[3] << 2 | (input[2] & 192) >> 6),
+        width: 1 + ((input[2] & 63) << 8 | input[1])
+      };
+    }
+    function calculateLossy(input) {
+      return {
+        height: (0, utils_1.readInt16LE)(input, 8) & 16383,
+        width: (0, utils_1.readInt16LE)(input, 6) & 16383
+      };
+    }
+    exports.WEBP = {
+      validate(input) {
+        const riffHeader = "RIFF" === (0, utils_1.toUTF8String)(input, 0, 4);
+        const webpHeader = "WEBP" === (0, utils_1.toUTF8String)(input, 8, 12);
+        const vp8Header = "VP8" === (0, utils_1.toUTF8String)(input, 12, 15);
+        return riffHeader && webpHeader && vp8Header;
+      },
+      calculate(input) {
+        const chunkHeader = (0, utils_1.toUTF8String)(input, 12, 16);
+        input = input.slice(20, 30);
+        if (chunkHeader === "VP8X") {
+          const extendedHeader = input[0];
+          const validStart = (extendedHeader & 192) === 0;
+          const validEnd = (extendedHeader & 1) === 0;
+          if (validStart && validEnd) {
+            return calculateExtended(input);
+          } else {
+            throw new TypeError("Invalid WebP");
+          }
+        }
+        if (chunkHeader === "VP8 " && input[0] !== 47) {
+          return calculateLossy(input);
+        }
+        const signature = (0, utils_1.toHexString)(input, 3, 6);
+        if (chunkHeader === "VP8L" && signature !== "9d012a") {
+          return calculateLossless(input);
+        }
+        throw new TypeError("Invalid WebP");
+      }
+    };
+  }
+});
+
+// node_modules/image-size/dist/types/index.js
+var require_types = __commonJS({
+  "node_modules/image-size/dist/types/index.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.typeHandlers = void 0;
+    var bmp_1 = require_bmp();
+    var cur_1 = require_cur();
+    var dds_1 = require_dds();
+    var gif_1 = require_gif();
+    var heif_1 = require_heif();
+    var icns_1 = require_icns();
+    var ico_1 = require_ico();
+    var j2c_1 = require_j2c();
+    var jp2_1 = require_jp2();
+    var jpg_1 = require_jpg();
+    var jxl_1 = require_jxl();
+    var jxl_stream_1 = require_jxl_stream();
+    var ktx_1 = require_ktx();
+    var png_1 = require_png();
+    var pnm_1 = require_pnm();
+    var psd_1 = require_psd();
+    var svg_1 = require_svg();
+    var tga_1 = require_tga();
+    var tiff_1 = require_tiff();
+    var webp_1 = require_webp();
+    exports.typeHandlers = {
+      bmp: bmp_1.BMP,
+      cur: cur_1.CUR,
+      dds: dds_1.DDS,
+      gif: gif_1.GIF,
+      heif: heif_1.HEIF,
+      icns: icns_1.ICNS,
+      ico: ico_1.ICO,
+      j2c: j2c_1.J2C,
+      jp2: jp2_1.JP2,
+      jpg: jpg_1.JPG,
+      jxl: jxl_1.JXL,
+      "jxl-stream": jxl_stream_1.JXLStream,
+      ktx: ktx_1.KTX,
+      png: png_1.PNG,
+      pnm: pnm_1.PNM,
+      psd: psd_1.PSD,
+      svg: svg_1.SVG,
+      tga: tga_1.TGA,
+      tiff: tiff_1.TIFF,
+      webp: webp_1.WEBP
+    };
+  }
+});
+
+// node_modules/image-size/dist/detector.js
+var require_detector = __commonJS({
+  "node_modules/image-size/dist/detector.js"(exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.detector = void 0;
+    var index_1 = require_types();
+    var keys2 = Object.keys(index_1.typeHandlers);
+    var firstBytes = {
+      56: "psd",
+      66: "bmp",
+      68: "dds",
+      71: "gif",
+      73: "tiff",
+      77: "tiff",
+      82: "webp",
+      105: "icns",
+      137: "png",
+      255: "jpg"
+    };
+    function detector(input) {
+      const byte = input[0];
+      if (byte in firstBytes) {
+        const type = firstBytes[byte];
+        if (type && index_1.typeHandlers[type].validate(input)) {
+          return type;
+        }
+      }
+      const finder = (key) => index_1.typeHandlers[key].validate(input);
+      return keys2.find(finder);
+    }
+    exports.detector = detector;
+  }
+});
+
+// node_modules/image-size/dist/index.js
+var require_dist = __commonJS({
+  "node_modules/image-size/dist/index.js"(exports, module) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.types = exports.setConcurrency = exports.disableTypes = exports.disableFS = exports.imageSize = void 0;
+    var fs2 = __require("fs");
+    var path2 = __require("path");
+    var queue_1 = require_queue();
+    var index_1 = require_types();
+    var detector_1 = require_detector();
+    var MaxInputSize = 512 * 1024;
+    var queue = new queue_1.default({ concurrency: 100, autostart: true });
+    var globalOptions = {
+      disabledFS: false,
+      disabledTypes: []
+    };
+    function lookup(input, filepath) {
+      const type = (0, detector_1.detector)(input);
+      if (typeof type !== "undefined") {
+        if (globalOptions.disabledTypes.indexOf(type) > -1) {
+          throw new TypeError("disabled file type: " + type);
+        }
+        if (type in index_1.typeHandlers) {
+          const size = index_1.typeHandlers[type].calculate(input, filepath);
+          if (size !== void 0) {
+            size.type = size.type ?? type;
+            return size;
+          }
+        }
+      }
+      throw new TypeError("unsupported file type: " + type + " (file: " + filepath + ")");
+    }
+    async function readFileAsync(filepath) {
+      const handle = await fs2.promises.open(filepath, "r");
+      try {
+        const { size } = await handle.stat();
+        if (size <= 0) {
+          throw new Error("Empty file");
+        }
+        const inputSize = Math.min(size, MaxInputSize);
+        const input = new Uint8Array(inputSize);
+        await handle.read(input, 0, inputSize, 0);
+        return input;
+      } finally {
+        await handle.close();
+      }
+    }
+    function readFileSync(filepath) {
+      const descriptor = fs2.openSync(filepath, "r");
+      try {
+        const { size } = fs2.fstatSync(descriptor);
+        if (size <= 0) {
+          throw new Error("Empty file");
+        }
+        const inputSize = Math.min(size, MaxInputSize);
+        const input = new Uint8Array(inputSize);
+        fs2.readSync(descriptor, input, 0, inputSize, 0);
+        return input;
+      } finally {
+        fs2.closeSync(descriptor);
+      }
+    }
+    module.exports = exports = imageSize2;
+    exports.default = imageSize2;
+    function imageSize2(input, callback) {
+      if (input instanceof Uint8Array) {
+        return lookup(input);
+      }
+      if (typeof input !== "string" || globalOptions.disabledFS) {
+        throw new TypeError("invalid invocation. input should be a Uint8Array");
+      }
+      const filepath = path2.resolve(input);
+      if (typeof callback === "function") {
+        queue.push(() => readFileAsync(filepath).then((input2) => process.nextTick(callback, null, lookup(input2, filepath))).catch(callback));
+      } else {
+        const input2 = readFileSync(filepath);
+        return lookup(input2, filepath);
+      }
+    }
+    exports.imageSize = imageSize2;
+    var disableFS = (v) => {
+      globalOptions.disabledFS = v;
+    };
+    exports.disableFS = disableFS;
+    var disableTypes = (types) => {
+      globalOptions.disabledTypes = types;
+    };
+    exports.disableTypes = disableTypes;
+    var setConcurrency = (c) => {
+      queue.concurrency = c;
+    };
+    exports.setConcurrency = setConcurrency;
+    exports.types = Object.keys(index_1.typeHandlers);
+  }
+});
 
 // node_modules/unist-util-is/lib/index.js
 var convert = (
@@ -9733,6 +11193,29 @@ var remarkFigureCaption = () => {
 };
 
 // src/index.ts
+var import_image_size = __toESM(require_dist());
+function rehypeImageDimensions() {
+  return (tree) => {
+    visit(tree, "element", (node2) => {
+      if (node2.tagName !== "img") return;
+      const src = node2.properties?.src;
+      if (!src || src.startsWith("http") || src.startsWith("//") || src.startsWith("data:")) return;
+      const cleanSrc = src.replace(/^(\.\/|\/)/, "");
+      const assetPath = path.join(process.cwd(), "content", cleanSrc);
+      if (fs.existsSync(assetPath)) {
+        try {
+          const dimensions = (0, import_image_size.imageSize)(assetPath);
+          if (dimensions?.width && dimensions?.height) {
+            node2.properties.width = dimensions.width;
+            node2.properties.height = dimensions.height;
+          }
+        } catch (e) {
+          console.error(`Could not read dimensions for: ${assetPath}`);
+        }
+      }
+    });
+  };
+}
 function rehypeRichCaption() {
   return (tree) => {
     visit(tree, "element", (node2) => {
@@ -9795,6 +11278,8 @@ var RehypeFigure = () => ({
   htmlPlugins() {
     return [
       [rehypeFigureTitle, {}],
+      [rehypeImageDimensions, {}],
+      // Placed before rich caption
       [rehypeRichCaption, {}]
     ];
   }
